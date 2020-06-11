@@ -1,10 +1,17 @@
 #include "megfile.h"
 MegFile::MegFile(const char* path)
 {
-	handle = fopen(path, "rb");
-	fread(&header, sizeof(header), 1, handle);
+	fname = path;
+	stream = new Stream(path);
+	if (!stream->Is_Available())
+	{
+		delete stream;
+		return;
+	}
+	stream->Open();
+	stream->Read(header);
 	char* filenamedata = new char[header.FileTableSize];
-	fread(filenamedata, 1, header.FileTableSize, handle);
+	stream->Read(filenamedata, header.FileTableSize);
 	std::vector<std::string> names;
 	char* filenameptr = filenamedata;
 	for (unsigned int i = 0; i < header.FilenameCount; i++)
@@ -20,12 +27,12 @@ MegFile::MegFile(const char* path)
 	for (unsigned int i = 0; i < header.FileCount; i++)
 	{
 		SubFileData data;
-		fread(&data.Flags, sizeof(data.Flags), 1, handle);
-		fread(&data.CRCValue, sizeof(data.CRCValue), 1, handle);
-		fread(&data.SubfileIndex, sizeof(data.SubfileIndex), 1, handle);
-		fread(&data.SubfileSize, sizeof(data.SubfileSize), 1, handle);
-		fread(&data.SubfileImageDataOffset, sizeof(data.SubfileImageDataOffset), 1, handle);
-		fread(&data.SubfileNameIndex, sizeof(data.SubfileNameIndex), 1, handle);
+		stream->Read(data.Flags);
+		stream->Read(data.CRCValue);
+		stream->Read(data.SubfileIndex);
+		stream->Read(data.SubfileSize);
+		stream->Read(data.SubfileImageDataOffset);
+		stream->Read(data.SubfileNameIndex);
 		filenames[data.SubfileIndex] = names[data.SubfileNameIndex];
 		subfiles[names[data.SubfileNameIndex]] = data;
 	}
@@ -34,7 +41,10 @@ MegFile::MegFile(const char* path)
 
 MegFile::~MegFile()
 {
-	fclose(handle);
+	if (stream)
+	{
+		delete stream;
+	}
 }
 
 int MegFile::GetFileCount()
@@ -44,16 +54,36 @@ int MegFile::GetFileCount()
 
 const char* MegFile::GetFileName(int index)
 {
-	return filenames[index].c_str();
+	if (filenames.find(index) != filenames.end())
+	{
+		return filenames[index].c_str();
+	}
+	return nullptr;
 }
 
-int MegFile::GetFileSize(const char* file)
+Stream* MegFile::OpenFile(const char* filename)
 {
-	return subfiles[file].SubfileSize;
+	std::string p = filename;
+	std::for_each(p.begin(), p.end(), [](char& c) {c = (char)std::toupper(c); });
+	if (subfiles.find(p) != subfiles.end())
+	{
+		Stream* s = new Stream(fname.c_str());
+		if (s->Is_Available())
+		{
+			SubFileData data = subfiles[p];
+			s->Bias(data.SubfileImageDataOffset, data.SubfileSize);
+			s->Open();
+			return s;
+		}
+	}
+	return nullptr;
 }
 
-void MegFile::GetFileData(const char* file, unsigned char* data)
+void MegFile::CloseFile(Stream* s)
 {
-	fseek(handle, subfiles[file].SubfileImageDataOffset, SEEK_SET);
-	fread(data, 1, subfiles[file].SubfileSize, handle);
+	if (s)
+	{
+		delete s;
+	}
 }
+

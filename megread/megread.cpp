@@ -1,4 +1,3 @@
-#include <vector>
 #include "megfile.h"
 int main(int argc, char *argv[])
 {
@@ -20,20 +19,25 @@ int main(int argc, char *argv[])
 			printf("%s\n", m.GetFileName(i));
 		}
 	}
-	unsigned char* c = new unsigned char[m.GetFileSize(argv[2])];
-	m.GetFileData(argv[2], c);
-	const char* name = strrchr(argv[2], '\\');
-	if (!name)
+	Stream* s = m.OpenFile(argv[2]);
+	int size = s->Size();
+	if (size != 0)
 	{
-		name = argv[2];
+		unsigned char* c = new unsigned char[size];
+		s->Read(c,size);
+		const char* name = strrchr(argv[2], '\\');
+		if (!name)
+		{
+			name = argv[2];
+		}
+		else
+		{
+			name++;
+		}
+		FILE* f = fopen(name, "wb");
+		fwrite(c, 1, size, f);
+		fclose(f);
+		delete[] c;
 	}
-	else
-	{
-		name++;
-	}
-	FILE* f = fopen(name, "wb");
-	fwrite(c, 1, m.GetFileSize(argv[2]), f);
-	fclose(f);
-	delete[] c;
 	return 0;
 }
