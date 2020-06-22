@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include <unordered_set>
-class Stream;
+class FileClass;
 class MegFile;
 class MegFileManager
 {
@@ -17,7 +17,11 @@ public:
 	}
 	bool Load(const char* megafilePath);
 	bool Exists(const char* path);
-	Stream *Open(const char* path);
-	void Close(Stream* s);
+	FileClass*Open(const char* path);
+	void Close(FileClass* s);
 	~MegFileManager();
 };
+
+extern MegFileManager* TheMegFileManager;
+void LoadMegs(const char* path);
+void CloseMegs();

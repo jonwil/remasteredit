@@ -21,12 +21,12 @@
     <ClCompile Include="..\utils\megfile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\utils\RAWFILE.CPP">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\utils\megfile.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\utils\stream.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

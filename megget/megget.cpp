@@ -11,27 +11,8 @@ int main(int argc, char* argv[])
 		printf("this tool will use the same file search logic as the Petroglyph editor does to locate and extract the specified file");
 		return 1;
 	}
-	MegFileManager m(argv[1]);
-	std::string p1 = argv[1];
-	p1 += "\\";
-	p1 += "DATA";
-	p1 += "\\";
-	std::string p2 = p1;
-	p2 += "CONFIG.MEG";
-	m.Load(p2.c_str());
-	p2 = p1;
-	p2 += "TEXTURES_COMMON_SRGB.MEG";
-	m.Load(p2.c_str());
-	p2 = p1;
-	p2 += "TEXTURES_RA_SRGB.MEG";
-	m.Load(p2.c_str());
-	p2 = p1;
-	p2 += "TEXTURES_SRGB.MEG";
-	m.Load(p2.c_str());
-	p2 = p1;
-	p2 += "TEXTURES_TD_SRGB.MEG";
-	m.Load(p2.c_str());
-	Stream* s = m.Open(argv[2]);
+	LoadMegs(argv[1]);
+	FileClass* s = TheMegFileManager->Open(argv[2]);
 	int size = s->Size();
 	if (size != 0)
 	{
@@ -51,5 +32,6 @@ int main(int argc, char* argv[])
 		fclose(f);
 		delete[] c;
 	}
+	CloseMegs();
 	return 0;
 }

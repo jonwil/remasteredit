@@ -1,15 +1,16 @@
 #include "megfile.h"
+#include "RAWFILE.H"
 MegFile::MegFile(const char* path)
 {
 	fname = path;
-	stream = new Stream(path);
+	stream = new RawFileClass(path);
 	if (!stream->Is_Available())
 	{
 		delete stream;
 		return;
 	}
 	stream->Open();
-	stream->Read(header);
+	stream->Read(&header,sizeof(header));
 	char* filenamedata = new char[header.FileTableSize];
 	stream->Read(filenamedata, header.FileTableSize);
 	std::vector<std::string> names;
@@ -27,12 +28,12 @@ MegFile::MegFile(const char* path)
 	for (unsigned int i = 0; i < header.FileCount; i++)
 	{
 		SubFileData data;
-		stream->Read(data.Flags);
-		stream->Read(data.CRCValue);
-		stream->Read(data.SubfileIndex);
-		stream->Read(data.SubfileSize);
-		stream->Read(data.SubfileImageDataOffset);
-		stream->Read(data.SubfileNameIndex);
+		stream->Read(&data.Flags, sizeof(data.Flags));
+		stream->Read(&data.CRCValue, sizeof(data.CRCValue));
+		stream->Read(&data.SubfileIndex, sizeof(data.SubfileIndex));
+		stream->Read(&data.SubfileSize, sizeof(data.SubfileSize));
+		stream->Read(&data.SubfileImageDataOffset, sizeof(data.SubfileImageDataOffset));
+		stream->Read(&data.SubfileNameIndex, sizeof(data.SubfileNameIndex));
 		filenames[data.SubfileIndex] = names[data.SubfileNameIndex];
 		subfiles[names[data.SubfileNameIndex]] = data;
 	}
@@ -61,13 +62,13 @@ const char* MegFile::GetFileName(int index)
 	return nullptr;
 }
 
-Stream* MegFile::OpenFile(const char* filename)
+FileClass* MegFile::OpenFile(const char* filename)
 {
-	std::string p = filename;
-	std::for_each(p.begin(), p.end(), [](char& c) {c = (char)std::toupper(c); });
+	char* p = _strdup(filename);
+	_strupr(p);
 	if (subfiles.find(p) != subfiles.end())
 	{
-		Stream* s = new Stream(fname.c_str());
+		RawFileClass* s = new RawFileClass(fname.c_str());
 		if (s->Is_Available())
 		{
 			SubFileData data = subfiles[p];
@@ -79,7 +80,7 @@ Stream* MegFile::OpenFile(const char* filename)
 	return nullptr;
 }
 
-void MegFile::CloseFile(Stream* s)
+void MegFile::CloseFile(FileClass* s)
 {
 	if (s)
 	{

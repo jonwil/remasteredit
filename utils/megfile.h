@@ -1,7 +1,7 @@
 #pragma once
 #include <unordered_map>
 #include <string>
-#include "stream.h"
+#include "wwfile.h"
 struct MegHeader
 {
 	unsigned int Flags;
@@ -28,14 +28,14 @@ private:
 	std::unordered_map<std::string, SubFileData> subfiles;
 	std::unordered_map<int, std::string> filenames;
 	MegHeader header;
-	Stream* stream;
+	FileClass* stream;
 public:
 	MegFile(const char *path);
 	~MegFile();
 	int GetFileCount();
 	const char *GetFileName(int index);
-	Stream* OpenFile(const char *filename);
-	void CloseFile(Stream* s);
+	FileClass* OpenFile(const char *filename);
+	void CloseFile(FileClass* s);
 	bool Is_Open()
 	{
 		return stream != nullptr;

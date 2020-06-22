@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 			printf("%s\n", m.GetFileName(i));
 		}
 	}
-	Stream* s = m.OpenFile(argv[2]);
+	FileClass* s = m.OpenFile(argv[2]);
 	int size = s->Size();
 	if (size != 0)
 	{
