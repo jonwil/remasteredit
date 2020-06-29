@@ -90,6 +90,18 @@
     <ClCompile Include="TerrainType.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="texman.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RAMFILE.CPP">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniz.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="teamcolor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TemplateType.h">
@@ -127,6 +139,15 @@
     </ClInclude>
     <ClInclude Include="smudgetype.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="texman.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="teamcolor.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cellmetrics.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

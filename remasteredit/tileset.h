@@ -2,20 +2,20 @@
 #include <vector>
 #include <string>
 #include <map>
-#include "megfilemanager.h"
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <shlwapi.h>
 #pragma warning(disable: 4458)
 #include <gdiplus.h>
 #pragma warning(default: 4458)
+class TeamColor;
+class TextureManager;
+class MegFileManager;
 class Tile
 {
 public:
 	Gdiplus::Bitmap* Image;
-	RECT OpaqueBounds;
-	Tile();
-	~Tile();
+	Gdiplus::Rect OpaqueBounds;
 };
 
 class TileData
@@ -24,7 +24,7 @@ public:
 	int FPS;
 	int FrameCount;
 	std::string* Frames;
-	std::map<std::string, Tile*> Tiles;
+	std::map<std::string, std::pair<Tile*, int>> TeamColorTiles;
 	TileData();
 	~TileData();
 };
@@ -32,19 +32,17 @@ public:
 class Tileset
 {
 private:
+	TextureManager* textureManager;
 	MegFileManager* m;
 	std::map<std::string, std::map<int, TileData*>> tiles;
 	std::string tilesetname;
 public:
-	Tileset(MegFileManager* manager) : m(manager)
+	Tileset(MegFileManager *manager, TextureManager *t) : m(manager), textureManager(t)
 	{
 	}
 	void Load(const char* path, const char* tpath);
-	int GetTileFPS(const char* name, int shape);
-	int GetTileFrames(const char* name, int shape);
-	const char* GetTileName(const char* name, int shape, int frame);
-	Tile* GetTileImage(const char* name, int shape, int frame);
-	bool HasTile(const char* name, int shape);
+	void Reset();
+	bool GetTileData(const char* name, int shape, TeamColor* teamColor, int& fps, std::pair<Tile*, int>& outtiles);
 	const char* GetName() { return tilesetname.c_str(); }
 	~Tileset();
 };
@@ -54,14 +52,15 @@ class TilesetManager
 private:
 	MegFileManager* m;
 	std::map<std::string, Tileset*> tilesets;
-	const char** sets;
+	const char** searchTilesets;
 public:
-	TilesetManager(MegFileManager* manager, const char* xmlpath, const char* texturespath);
-	int GetTileFPS(const char* name, int shape);
-	int GetTileFrames(const char* name, int shape);
-	const char* GetTileName(const char* name, int shape, int frame);
-	Tile* GetTileImage(const char* name, int shape, int frame);
-	void SetSets(const char** newsets) { sets = newsets; }
+	TilesetManager(MegFileManager* manager, TextureManager *textureManager, const char* xmlpath, const char* texturespath);
+	void Reset();
+	bool GetTeamColorTileData(const char *name, int shape, TeamColor *teamColor, int& fps, std::pair<Tile*, int>& tiles);
+	bool GetTeamColorTileData(const char* name, int shape, TeamColor *teamColor, int& fps, Tile *& tile);
+	bool GetTeamColorTileData(const char* name, int shape, TeamColor *teamColor, Tile*& tile);
+	bool GetTileData(const char* name, int shape, Tile*& tile);
+	void SetSets(const char** newsets) { searchTilesets = newsets; }
 	~TilesetManager();
 };
 

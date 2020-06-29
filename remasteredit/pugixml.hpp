@@ -10,7 +10,7 @@
  * This work is based on the pugxml parser, which is:
  * Copyright (C) 2003, by Kristen Wegner (kristen@tima.net)
  */
-
+#define PUGIXML_NO_EXCEPTIONS
 #ifndef PUGIXML_VERSION
 // Define version macro; evaluates to major * 1000 + minor * 10 + patch so that it's safe to use in less-than comparisons
 // Note: pugixml used major * 100 + minor * 10 + patch format up until 1.9 (which had version identifier 190); starting from pugixml 1.10, the minor version number is two digits

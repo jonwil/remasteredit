@@ -11,6 +11,8 @@
 #include "TemplateType.h"
 #include "tileset.h"
 #include "map.h"
+#include "teamcolor.h"
+#include "texman.h"
 int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
 	UINT  num = 0;          // number of image encoders
@@ -63,6 +65,11 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 		return 0;
 	}
 	LoadMegs(__argv[1]);
+	TeamColorManager* TheTeamColorManagerTD = new TeamColorManager(TheMegFileManager);
+	TeamColorManager* TheTeamColorManagerRA = new TeamColorManager(TheMegFileManager);
+	TheTeamColorManagerTD->Load("DATA\\XML\\CNCTDTEAMCOLORS.XML");
+	TheTeamColorManagerRA->Load("DATA\\XML\\CNCRATEAMCOLORS.XML");
+	InitTextures();
 	InitTilesets();
 	FreeImage_Initialise();
 	Map* map = new Map();
@@ -79,8 +86,9 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	delete bitmap;
 	FreeImage_DeInitialise();
 	ShutdownTilesets();
-	CloseMegs();
+	ShutdownTextures();
 	delete map;
+	CloseMegs();
 	Gdiplus::GdiplusShutdown(gdiplusToken);
 	return 0;
 }

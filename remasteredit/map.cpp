@@ -1,3 +1,4 @@
+#include "cellmetrics.h"
 #include "map.h"
 #include "tileset.h"
 #include "TemplateType.h"
@@ -29,9 +30,10 @@ const char* RAInterior[5] = { "RA_Units", "RA_Structures", "RA_VFX", "Common_VFX
 #define	TD_MAP_CELL_TOTAL			(TD_MAP_CELL_W*TD_MAP_CELL_H)
 std::map<std::string, int> TDTheaterIDs;
 std::map<std::string, int> RATheaterIDs;
-int tilescale = 2;
-int tilesize = 128 / tilescale;
-Map::Map() : width(0), height(0), size(0), templates(nullptr), overlays(nullptr), smudges(nullptr), terrains(nullptr), isra(false), theaterid(0)
+static int tilescale = 2;
+static int tilesize = 128 / tilescale;
+ const FacingType CellMetrics::AdjacentFacings[8] = { FACING_NORTH, FACING_NORTHEAST, FACING_EAST, FACING_SOUTHEAST, FACING_SOUTH, FACING_SOUTHWEST, FACING_WEST, FACING_NORTHWEST };
+Map::Map() : width(0), height(0), size(0), templates(nullptr), overlays(nullptr), smudges(nullptr), technos(nullptr), isra(false), theaterid(0)
 {
 	tilesize = 128 / tilescale;
 	TDTheaters["desert"] = TDDesert;
@@ -50,71 +52,13 @@ Map::Map() : width(0), height(0), size(0), templates(nullptr), overlays(nullptr)
 
 Map::~Map()
 {
-	delete[] templates;
-	delete[] overlays;
-	delete[] smudges;
-	delete[] terrains;
+	delete metrics;
+	delete templates;
+	delete overlays;
+	delete smudges;
+	delete technos;
 }
 
-bool Map::GetAdjacentPoint(int x, int y, FacingType facing, int &outx, int &outy)
-{
-	int adjx = x;
-	int adjy = y;
-	switch (facing)
-	{
-	case FACING_NORTH:
-		adjy--;
-		break;
-	case FACING_NORTHEAST:
-		adjx++;
-		adjy--;
-		break;
-	case FACING_EAST:
-		adjx++;
-		break;
-	case FACING_SOUTHEAST:
-		adjx++;
-		adjy++;
-		break;
-	case FACING_SOUTH:
-		adjy++;
-		break;
-	case FACING_SOUTHWEST:
-		adjx--;
-		adjy++;
-		break;
-	case FACING_WEST:
-		adjx--;
-		break;
-	case FACING_NORTHWEST:
-		adjx--;
-		adjy--;
-		break;
-	}
-	outx = adjx;
-	outy = adjy;
-	if (outx < 0 || outx > width)
-	{
-		return false;
-	}
-	if (outy < 0 || outy > height)
-	{
-		return false;
-	}
-	return true;
-}
-
-Overlay* Map::GetAdjacentOverlay(int x, int y, FacingType facing)
-{
-	int px;
-	int py;
-	if (GetAdjacentPoint(x, y, facing, px, py))
-	{
-		int cell = (py * width) + px;
-		return &overlays[cell];
-	}
-	return nullptr;
-}
 
 void Map::Load(const char* path)
 {
@@ -134,6 +78,7 @@ void Map::Load(const char* path)
 	}
 	if (isra)
 	{
+		metrics = new CellMetrics(RA_MAP_CELL_W, RA_MAP_CELL_H);
 		char th[9];
 		ini.Get_String("Map", "Theater", "", th, 9);
 		theater = th;
@@ -144,10 +89,9 @@ void Map::Load(const char* path)
 		size = RA_MAP_CELL_TOTAL;
 		if (templates)
 		{
-			delete[] templates;
+			delete templates;
 		}
-		templates = new Template[RA_MAP_CELL_TOTAL];
-		memset(templates, 0, RA_MAP_CELL_TOTAL * sizeof(Template));
+		templates = new CellGrid<Template>(metrics);
 		int clen = ini.Get_UUBlock("MapPack", _staging_buffer, sizeof(_staging_buffer));
 		BufferStraw cbstraw(_staging_buffer, clen);
 		LCWStraw cdecomp(LCWStraw::DECOMPRESS);
@@ -165,7 +109,9 @@ void Map::Load(const char* path)
 			{
 				if (t->Theater & theaterid)
 				{
-					templates[i].type = t;
+					Template tx;
+					tx.type = t;
+					templates->Set(i,tx);
 				}
 			}
 		}
@@ -173,15 +119,18 @@ void Map::Load(const char* path)
 		{
 			unsigned char b;
 			cdecomp.Get(&b, sizeof(b));
-			if (templates[i].type)
+			if (templates->Get(i).type)
 			{
-				if (templates[i].type->ID != TEMPLATERA_CLEAR1 && b >= templates[i].type->IconWidth * templates[i].type->IconHeight)
+				if (templates->Get(i).type->ID != TEMPLATERA_CLEAR1 && b >= templates->Get(i).type->IconWidth * templates->Get(i).type->IconHeight)
 				{
-					templates[i].type = nullptr;
+					Template tx;
+					templates->Set(i,tx);
 				}
 				else
 				{
-					templates[i].icon = b;
+					Template tx = templates->Get(i);
+					tx.icon = b;
+					templates->Set(i,tx);
 				}
 			}
 		}
@@ -189,8 +138,7 @@ void Map::Load(const char* path)
 		{
 			delete[] overlays;
 		}
-		overlays = new Overlay[RA_MAP_CELL_TOTAL];
-		memset(overlays, 0, RA_MAP_CELL_TOTAL * sizeof(Overlay));
+		overlays = new CellGrid<Overlay>(metrics);
 		int olen = ini.Get_UUBlock("OverlayPack", _staging_buffer, sizeof(_staging_buffer));
 		BufferStraw obstraw(_staging_buffer, olen);
 		LCWStraw odecomp(LCWStraw::DECOMPRESS);
@@ -208,7 +156,12 @@ void Map::Load(const char* path)
 			{
 				if (o->Theater & theaterid)
 				{
-					overlays[i].type = o;
+					Overlay ox;
+					ox.type = o;
+					ox.OccupyMask = o->OccupyMask;
+					ox.Width = o->Width;
+					ox.Height = o->Height;
+					overlays->Set(i,ox);
 				}
 			}
 		}
@@ -216,8 +169,7 @@ void Map::Load(const char* path)
 		{
 			delete[] smudges;
 		}
-		smudges = new Smudge[RA_MAP_CELL_TOTAL];
-		memset(smudges, 0, RA_MAP_CELL_TOTAL * sizeof(Smudge));
+		smudges = new CellGrid<Smudge>(metrics);
 		for (int i = 0; i < ini.Entry_Count("Smudge"); i++)
 		{
 			const char* cell = ini.Get_Entry("Smudge", i);
@@ -228,16 +180,17 @@ void Map::Load(const char* path)
 			int data = atoi(strtok(nullptr, ","));
 			if (SmudgeType::SmudgeMapTD.count(name))
 			{
-				smudges[cellid].type = SmudgeType::SmudgeMapTD[name];
-				smudges[cellid].data = data;
+				Smudge s;
+				s.type = SmudgeType::SmudgeMapTD[name];
+				s.data = data;
+				smudges->Set(cellid,s);
 			}
 		}
-		if (terrains)
+		if (technos)
 		{
-			delete[] terrains;
+			delete[] technos;
 		}
-		terrains = new Terrain[RA_MAP_CELL_TOTAL];
-		memset(terrains, 0, RA_MAP_CELL_TOTAL * sizeof(Terrain));
+		technos = new OccupierSet<Techno *>(metrics);
 		for (int i = 0; i < ini.Entry_Count("Terrain"); i++)
 		{
 			const char* cell = ini.Get_Entry("Terrain", i);
@@ -246,13 +199,19 @@ void Map::Load(const char* path)
 			ini.Get_String("Terrain", cell, nullptr, terrain, 100);
 			if (TerrainType::TerrainMapTD.count(terrain))
 			{
-				terrains[cellid].type = TerrainType::TerrainMapTD[terrain];
-				terrains[cellid].Trigger = _strdup("");
+				Terrain *t = new Terrain;
+				t->type = TerrainType::TerrainMapTD[terrain];
+				t->OccupyMask = t->type->OccupyMask;
+				t->Width = t->type->Width;
+				t->Height = t->type->Height;
+				t->trigger = _strdup("");
+				technos->Add(cellid, t);
 			}
 		}
 	}
 	else
 	{
+		metrics = new CellMetrics(TD_MAP_CELL_W, TD_MAP_CELL_H);
 		char th[9];
 		ini.Get_String("Map", "Theater", "", th, 9);
 		theater = th;
@@ -264,10 +223,9 @@ void Map::Load(const char* path)
 		size = TD_MAP_CELL_TOTAL;
 		if (templates)
 		{
-			delete[] templates;
+			delete templates;
 		}
-		templates = new Template[TD_MAP_CELL_TOTAL];
-		memset(templates, 0, TD_MAP_CELL_TOTAL * sizeof(Template));
+		templates = new CellGrid<Template>(metrics);
 		for (int i = 0; i < TD_MAP_CELL_TOTAL; i++)
 		{
 			unsigned char tile;
@@ -283,8 +241,10 @@ void Map::Load(const char* path)
 			{
 				if (t->Theater & theaterid)
 				{
-					templates[i].type = t;
-					templates[i].icon = icon;
+					Template tx;
+					tx.type = t;
+					tx.icon = icon;
+					templates->Set(i, tx);
 				}
 			}
 		}
@@ -292,8 +252,7 @@ void Map::Load(const char* path)
 		{
 			delete[] overlays;
 		}
-		overlays = new Overlay[TD_MAP_CELL_TOTAL];
-		memset(overlays, 0, TD_MAP_CELL_TOTAL * sizeof(Overlay));
+		overlays = new CellGrid<Overlay>(metrics);
 		for (int i = 0; i < ini.Entry_Count("Overlay"); i++)
 		{
 			const char* cell = ini.Get_Entry("Overlay", i);
@@ -302,15 +261,19 @@ void Map::Load(const char* path)
 			ini.Get_String("Overlay", cell, nullptr, overlay, 9);
 			if (OverlayType::OverlayMapTD.count(overlay))
 			{
-				overlays[cellid].type = OverlayType::OverlayMapTD[overlay];
+				Overlay ox;
+				ox.type = OverlayType::OverlayMapTD[overlay];
+				ox.OccupyMask = ox.type->OccupyMask;
+				ox.Width = ox.type->Width;
+				ox.Height = ox.type->Height;
+				overlays->Set(cellid, ox);
 			}
 		}
 		if (smudges)
 		{
 			delete[] smudges;
 		}
-		smudges = new Smudge[RA_MAP_CELL_TOTAL];
-		memset(smudges, 0, RA_MAP_CELL_TOTAL * sizeof(Smudge));
+		smudges = new CellGrid<Smudge>(metrics);
 		for (int i = 0; i < ini.Entry_Count("Smudge"); i++)
 		{
 			const char* cell = ini.Get_Entry("Smudge", i);
@@ -321,16 +284,17 @@ void Map::Load(const char* path)
 			int data = atoi(strtok(nullptr, ","));
 			if (SmudgeType::SmudgeMapTD.count(name))
 			{
-				smudges[cellid].type = SmudgeType::SmudgeMapTD[name];
-				smudges[cellid].data = data;
+				Smudge s;
+				s.type = SmudgeType::SmudgeMapRA[name];
+				s.data = data;
+				smudges->Set(cellid, s);
 			}
 		}
-		if (terrains)
+		if (technos)
 		{
-			delete[] terrains;
+			delete[] technos;
 		}
-		terrains = new Terrain[TD_MAP_CELL_TOTAL];
-		memset(terrains, 0, TD_MAP_CELL_TOTAL * sizeof(Terrain));
+		technos = new OccupierSet<Techno *>(metrics);
 		for (int i = 0; i < ini.Entry_Count("Terrain"); i++)
 		{
 			const char* cell = ini.Get_Entry("Terrain", i);
@@ -341,12 +305,17 @@ void Map::Load(const char* path)
 			char* trigger = strtok(nullptr, ",");
 			if (TerrainType::TerrainMapTD.count(name))
 			{
-				terrains[cellid].type = TerrainType::TerrainMapTD[name];
-				terrains[cellid].Trigger = _strdup(trigger);
-				if (terrains[cellid].type->IsTransformable)
+				Terrain *t = new Terrain;
+				t->type = TerrainType::TerrainMapTD[name];
+				t->trigger = _strdup(trigger);
+				t->OccupyMask = t->type->OccupyMask;
+				t->Width = t->type->Width;
+				t->Height = t->type->Height;
+				if (t->type->IsTransformable)
 				{
-					terrains[cellid].icon = 22;
+					t->icon = 22;
 				}
+				technos->Add(cellid, t);
 			}
 		}
 	}
@@ -357,53 +326,55 @@ void Map::Load(const char* path)
 		for (int x = 0; x < width; x++)
 		{
 			int cell = (y * width) + x;
-			Overlay* o = &overlays[cell];
-			if (o->type)
+			Overlay o = overlays->Get(cell);
+			if (o.type)
 			{
-				if (o->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || o->type->Flag == OVERLAYTYPE_GEMS)
+				if (o.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || o.type->Flag == OVERLAYTYPE_GEMS)
 				{
 					int count = 0;
-					for (int i = 0; i < FACING_COUNT; i++)
+					for (auto i : metrics->AdjacentFacings)
 					{
-						Overlay* ao = GetAdjacentOverlay(x, y, (FacingType)i);
-						if (ao && ao->type && (ao->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || ao->type->Flag == OVERLAYTYPE_GEMS))
+						Overlay ao = overlays->Adjacent(cell, i);
+						if (ao.type && (ao.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || ao.type->Flag == OVERLAYTYPE_GEMS))
 						{
 							count++;
 						}
 					}
-					if (o->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD)
+					if (o.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD)
 					{
-						o->icon = icons1[count];
+						o.icon = icons1[count];
 					}
 					else
 					{
-						o->icon = icons2[count];
+						o.icon = icons2[count];
 					}
+					overlays->Set(cell, o);
 				}
-				if (o->type->Flag == OVERLAYTYPE_WALL)
+				if (o.type->Flag == OVERLAYTYPE_WALL)
 				{
-					Overlay* north = GetAdjacentOverlay(x, y, FACING_NORTH);
-					Overlay* east = GetAdjacentOverlay(x, y, FACING_EAST);
-					Overlay* south = GetAdjacentOverlay(x, y, FACING_SOUTH);
-					Overlay* west = GetAdjacentOverlay(x, y, FACING_WEST);
+					Overlay north = overlays->Adjacent(cell, FACING_NORTH);
+					Overlay east = overlays->Adjacent(cell, FACING_EAST);
+					Overlay south = overlays->Adjacent(cell, FACING_SOUTH);
+					Overlay west = overlays->Adjacent(cell, FACING_WEST);
 					int count = 0;
-					if (north && north->type == o->type)
+					if (north.type == o.type)
 					{
 						count |= 1;
 					}
-					if (east && east->type == o->type)
+					if (east.type == o.type)
 					{
 						count |= 2;
 					}
-					if (south && south->type == o->type)
+					if (south.type == o.type)
 					{
 						count |= 4;
 					}
-					if (west && west->type == o->type)
+					if (west.type == o.type)
 					{
 						count |= 8;
 					}
-					o->icon = count;
+					o.icon = count;
+					overlays->Set(cell, o);
 				}
 			}
 		}
@@ -417,16 +388,16 @@ void Map::Render(Gdiplus::Graphics *graphics)
 		for (int j = 0; j < width; j++)
 		{
 			int cell = (i * width) + j;
-			Template* t = &templates[cell];
+			Template t = templates->Get(cell);
 			const char* name = "clear1";
 			int icon = ((cell & 3) | ((cell >> 4) & 12));
-			if (t->type)
+			if (t.type)
 			{
-				name = t->type->Name.c_str();
-				icon = t->icon;
+				name = t.type->Name.c_str();
+				icon = t.icon;
 			}
-			Tile* tile = TheTilesetManager->GetTileImage(name, icon, 0);
-			if (tile)
+			Tile* tile;
+			if (TheTilesetManager->GetTileData(name, icon, tile))
 			{
 				Gdiplus::Rect r;
 				r.X = j * tilesize;
@@ -442,18 +413,18 @@ void Map::Render(Gdiplus::Graphics *graphics)
 		for (int j = 0; j < width; j++)
 		{
 			int cell = (i * width) + j;
-			Smudge* o = &smudges[cell];
+			Smudge o = smudges->Get(cell);
 			const char* name = nullptr;
 			int icon = 0;
-			if (o->type)
+			if (o.type)
 			{
-				name = o->type->Name.c_str();
-				icon = o->icon;
+				name = o.type->Name.c_str();
+				icon = o.icon;
 			}
 			if (name)
 			{
-				Tile* tile = TheTilesetManager->GetTileImage(name, icon, 0);
-				if (tile)
+				Tile* tile;
+				if (TheTilesetManager->GetTileData(name, icon, tile))
 				{
 					int twidth = tile->Image->GetWidth() / tilescale;
 					int theight = tile->Image->GetHeight() / tilescale;
@@ -474,34 +445,34 @@ void Map::Render(Gdiplus::Graphics *graphics)
 		for (int j = 0; j < width; j++)
 		{
 			int cell = (i * width) + j;
-			Overlay* o = &overlays[cell];
+			Overlay o = overlays->Get(cell);
 			const char* name = nullptr;
 			int icon = 0;
-			if (o->type)
+			if (o.type)
 			{
-				name = o->type->Name.c_str();
-				if (o->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD && !isra)
+				name = o.type->Name.c_str();
+				if (o.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD && !isra)
 				{
 					name = OverlayType::Tiberium[rand() % OverlayType::Tiberium.size()]->Name.c_str();
 				}
-				if (o->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD && isra)
+				if (o.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD && isra)
 				{
 					name = OverlayType::Gold[rand() % OverlayType::Gold.size()]->Name.c_str();
 				}
-				if (o->type->Flag == OVERLAYTYPE_GEMS)
+				if (o.type->Flag == OVERLAYTYPE_GEMS)
 				{
 					name = OverlayType::Gems[rand() % OverlayType::Gems.size()]->Name.c_str();
 				}
-				icon = o->icon;
+				icon = o.icon;
 			}
 			if (name)
 			{
-				Tile* tile = TheTilesetManager->GetTileImage(name, icon, 0);
-				if (tile)
+				Tile* tile;
+				if (TheTilesetManager->GetTileData(name, icon, tile))
 				{
 					int twidth = tilesize;
 					int theight = tilesize;
-					if (o->type->Flag == OVERLAYTYPE_CRATE || o->type->Flag == OVERLAYTYPE_FLAG)
+					if (o.type->Flag == OVERLAYTYPE_CRATE || o.type->Flag == OVERLAYTYPE_FLAG)
 					{
 						twidth = tile->Image->GetWidth() / tilescale;
 						theight = tile->Image->GetHeight() / tilescale;
@@ -518,38 +489,36 @@ void Map::Render(Gdiplus::Graphics *graphics)
 			}
 		}
 	}
-	for (int i = 0; i < height; i++)
+	std::vector<std::pair<Techno *, Gdiplus::Point>> occupiers = technos->GetOccupiers(typeid(Terrain));
+	for (auto i : occupiers)
 	{
-		for (int j = 0; j < width; j++)
+		Terrain *o = (Terrain *)i.first;
+		Gdiplus::Point p = i.second;
+		const char* name = nullptr;
+		int icon = 0;
+		if (o->type)
 		{
-			int cell = (i * width) + j;
-			Terrain* o = &terrains[cell];
-			const char* name = nullptr;
-			int icon = 0;
-			if (o->type)
+			name = o->type->Name.c_str();
+			if (o->type->IsMine)
 			{
-				name = o->type->Name.c_str();
-				if (o->type->IsMine)
-				{
-					name = "OREMINE";
-				}
+				name = "OREMINE";
 			}
-			if (name)
+		}
+		if (name)
+		{
+			Tile* tile;
+			if (TheTilesetManager->GetTileData(name, icon, tile))
 			{
-				Tile* tile = TheTilesetManager->GetTileImage(name, icon, 0);
-				if (tile)
-				{
-					int twidth = tile->Image->GetWidth() / tilescale;
-					int theight = tile->Image->GetHeight() / tilescale;
-					int xpos = j * tilesize;
-					int ypos = i * tilesize;
-					Gdiplus::Rect r;
-					r.X = xpos;
-					r.Y = ypos;
-					r.Width = twidth;
-					r.Height = theight;
-					graphics->DrawImage(tile->Image, r);
-				}
+				int twidth = tile->Image->GetWidth() / tilescale;
+				int theight = tile->Image->GetHeight() / tilescale;
+				int xpos = p.X * tilesize;
+				int ypos = p.Y * tilesize;
+				Gdiplus::Rect r;
+				r.X = xpos;
+				r.Y = ypos;
+				r.Width = twidth;
+				r.Height = theight;
+				graphics->DrawImage(tile->Image, r);
 			}
 		}
 	}

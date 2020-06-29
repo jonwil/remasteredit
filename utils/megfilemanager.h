@@ -18,7 +18,6 @@ public:
 	bool Load(const char* megafilePath);
 	bool Exists(const char* path);
 	FileClass*Open(const char* path);
-	void Close(FileClass* s);
 	~MegFileManager();
 };
 

@@ -98,15 +98,10 @@ FileClass* MegFileManager::Open(const char* path)
 			{
 				return s;
 			}
-			i->CloseFile(s);
+			delete s;
 		}
 	}
 	return nullptr;
-}
-
-void MegFileManager::Close(FileClass *s)
-{
-	megfiles[0]->CloseFile(s);
 }
 
 MegFileManager::~MegFileManager()

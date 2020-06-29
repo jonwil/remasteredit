@@ -35,7 +35,6 @@ public:
 	int GetFileCount();
 	const char *GetFileName(int index);
 	FileClass* OpenFile(const char *filename);
-	void CloseFile(FileClass* s);
 	bool Is_Open()
 	{
 		return stream != nullptr;

@@ -79,12 +79,3 @@ FileClass* MegFile::OpenFile(const char* filename)
 	}
 	return nullptr;
 }
-
-void MegFile::CloseFile(FileClass* s)
-{
-	if (s)
-	{
-		delete s;
-	}
-}
-

@@ -85,8 +85,12 @@ public:
 	std::string TextId;
 	unsigned char Theater;
 	OverlayTypeFlag Flag;
-	OverlayType(char id, const char* name, const char *textid, unsigned char theater, OverlayTypeFlag flag, bool isra) : ID(id), Name(name), TextId(textid), Theater(theater), Flag(flag)
+	bool* OccupyMask;
+	int Width;
+	int Height;
+	OverlayType(char id, const char* name, const char *textid, unsigned char theater, OverlayTypeFlag flag, bool isra) : ID(id), Name(name), TextId(textid), Theater(theater), Flag(flag), Width(1), Height(1)
 	{
+		static bool mask[1] = { true };
 		if (isra)
 		{
 			OverlayMapRA[name] = this;
@@ -107,6 +111,7 @@ public:
 		{
 			Gems.push_back(this);
 		}
+		OccupyMask = mask;
 	}
 	static OverlayType const* const PointersRA[OVERLAYRA_COUNT];
 	static OverlayType const* const PointersTD[OVERLAYTD_COUNT];

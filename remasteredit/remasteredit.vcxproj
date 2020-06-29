@@ -58,6 +58,7 @@
       <AdditionalIncludeDirectories>..\utils</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -76,6 +77,7 @@
       <AdditionalIncludeDirectories>..\utils</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -104,23 +106,30 @@
     <ClCompile Include="..\utils\XPIPE.CPP" />
     <ClCompile Include="..\utils\XSTRAW.CPP" />
     <ClCompile Include="map.cpp" />
+    <ClCompile Include="miniz.c" />
     <ClCompile Include="OverlayType.cpp" />
     <ClCompile Include="pugixml.cpp" />
+    <ClCompile Include="RAMFILE.CPP" />
     <ClCompile Include="remasteredit.cpp" />
     <ClCompile Include="smudgetype.cpp" />
+    <ClCompile Include="teamcolor.cpp" />
     <ClCompile Include="templatetype.cpp" />
     <ClCompile Include="TerrainType.cpp" />
+    <ClCompile Include="texman.cpp" />
     <ClCompile Include="tileset.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AircraftType.h" />
+    <ClInclude Include="cellmetrics.h" />
     <ClInclude Include="infantrytype.h" />
     <ClInclude Include="map.h" />
     <ClInclude Include="overlaytype.h" />
     <ClInclude Include="smudgetype.h" />
     <ClInclude Include="structtype.h" />
+    <ClInclude Include="teamcolor.h" />
     <ClInclude Include="TemplateType.h" />
     <ClInclude Include="TerrainType.h" />
+    <ClInclude Include="texman.h" />
     <ClInclude Include="theatertype.h" />
     <ClInclude Include="tileset.h" />
     <ClInclude Include="unittype.h" />
