@@ -13,7 +13,7 @@
 #include <list>
 #include <set>
 #include <unordered_set>
-
+#pragma warning(disable:4100)
 //
 
 namespace boolinq {
@@ -880,3 +880,4 @@ namespace boolinq {
         );
     }
 }
+#pragma warning(default:4100)

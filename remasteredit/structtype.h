@@ -1,5 +1,12 @@
 #pragma once
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <shlwapi.h>
+#pragma warning(disable: 4458)
+#include <gdiplus.h>
+#pragma warning(default: 4458)
 #include <string>
+#include <map>
 typedef enum StructTypeTD : char {
 	STRUCTTD_NONE = -1,
 	STRUCTTD_WEAP,
@@ -70,7 +77,6 @@ typedef enum StructTypeTD : char {
 	STRUCTTD_COUNT,
 	STRUCTTD_FIRST = 0
 } StructTypeTD;
-
 typedef enum StructTypeRA : char {
 	STRUCTRA_NONE = -1,
 	STRUCTRA_ADVANCED_TECH,
@@ -163,3 +169,44 @@ typedef enum StructTypeRA : char {
 	STRUCTRA_COUNT,
 	STRUCTRA_FIRST = 0
 } StructTypeRA;
+class StructType
+{
+public:
+	char ID;
+	std::string Name;
+	std::string TileName;
+	std::string TextId;
+	int Width;
+	int Height;
+	bool* BaseOccupyMask;
+	int OccupyWidth;
+	int OccupyHeight;
+	bool* OccupyMask;
+	bool Bib;
+	std::string OwnerHouse;
+	unsigned char Theater;
+	bool IsFake;
+	bool HasTurret;
+	std::string FactoryOverlay;
+	Gdiplus::Size Size;
+	Gdiplus::Rect OverlapBounds;
+	StructType(char id, const char* name, const char* textid, int height, int width, bool* baseoccupymask, int occupyheight, int occupywidth, bool* occupymask, bool bib, const char* ownerhouse, unsigned char theater, bool isfake, bool hasturret, const char* factoryoverlay, bool isra) : ID(id), Name(name), TileName(name), TextId(textid), Width(width), Height(height), BaseOccupyMask(baseoccupymask), OccupyWidth(occupywidth), OccupyHeight(occupyheight), OccupyMask(occupymask), Bib(bib), OwnerHouse(ownerhouse), Theater(theater), IsFake(isfake), HasTurret(hasturret), FactoryOverlay(factoryoverlay), Size(Width, Height), OverlapBounds(0, 0, OccupyWidth, OccupyHeight)
+	{
+		if (isfake)
+		{
+			Name[Name.length() - 1] = 'f';
+		}
+		if (isra)
+		{
+			StructMapRA[Name] = this;
+		}
+		else
+		{
+			StructMapTD[Name] = this;
+		}
+	}
+	static StructType const* const PointersRA[STRUCTRA_COUNT];
+	static StructType const* const PointersTD[STRUCTTD_COUNT];
+	static std::map<std::string, StructType*> StructMapTD;
+	static std::map<std::string, StructType*> StructMapRA;
+};

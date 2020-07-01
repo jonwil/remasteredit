@@ -112,6 +112,7 @@
     <ClCompile Include="RAMFILE.CPP" />
     <ClCompile Include="remasteredit.cpp" />
     <ClCompile Include="smudgetype.cpp" />
+    <ClCompile Include="structtype.cpp" />
     <ClCompile Include="teamcolor.cpp" />
     <ClCompile Include="templatetype.cpp" />
     <ClCompile Include="TerrainType.cpp" />

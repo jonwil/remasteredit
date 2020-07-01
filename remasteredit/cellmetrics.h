@@ -18,6 +18,7 @@ template <class Key, class Value, class Compare, class Allocator> bool TryGetVal
 }
 enum FacingType
 {
+	FACING_NONE,
 	FACING_NORTH,
 	FACING_NORTHEAST,
 	FACING_EAST,

@@ -13,6 +13,15 @@ class TemplateType;
 class OverlayType;
 class SmudgeType;
 class TerrainType;
+class StructType;
+class Map;
+struct DirectionType
+{
+	unsigned char ID;
+	std::string Name;
+	FacingType Facing;
+	static DirectionType Types[16];
+};
 template <class T> class CellChangedEventArgs
 {
 public:
@@ -42,7 +51,6 @@ private:
 	T* cells;
 public:
 	Gdiplus::Size size;
-	int length;
 	T Get(int x, int y)
 	{
 		return cells[(y * metrics->Width) + x];
@@ -78,7 +86,7 @@ public:
 	}
 	void (*OnCellChanged)(CellChangedEventArgs<T> args);
 	void (*OnCleared)();
-	CellGrid(CellMetrics* m) : metrics(m)
+	CellGrid(CellMetrics* m) : metrics(m), OnCellChanged(nullptr), OnCleared(nullptr)
 	{
 		metrics = m;
 		cells = new T[metrics->Length];
@@ -157,6 +165,7 @@ private:
 	CellMetrics* metrics;
 	std::map<T, Gdiplus::Point> occupiers;
 	T* occupierCells;
+	Map* map;
 public:
 	T Get(Gdiplus::Point location)
 	{
@@ -187,15 +196,18 @@ public:
 		}
 		return Gdiplus::Point(-1,-1);
 	}
-	void (*OnOccupierAdded)(OccupierEventArgs<T> args);
-	void (*OnOccupierRemoved)(OccupierEventArgs<T> args);
-	void (*OnCleared)();
-	OccupierSet(CellMetrics* m) : metrics(m), OnCleared(nullptr), OnOccupierAdded(nullptr), OnOccupierRemoved(nullptr)
+	void (Map::*OnOccupierAdded)(OccupierEventArgs<T> args);
+	void (Map::*OnOccupierRemoved)(OccupierEventArgs<T> args);
+	OccupierSet(CellMetrics* m) : metrics(m), OnOccupierAdded(nullptr), OnOccupierRemoved(nullptr)
 	{
 		occupierCells = new T[metrics->Length];
 	}
 	~OccupierSet()
 	{
+		for (auto i : occupiers)
+		{
+			delete i.first;
+		}
 		delete[] occupierCells;
 	}
 	bool CanAdd(Gdiplus::Point location, T occupier, bool *occupyMask, int width, int height)
@@ -232,7 +244,7 @@ public:
 		}
 		if (OnOccupierAdded)
 		{
-			OnOccupierAdded(OccupierEventArgs<T>(metrics, location, occupier));
+			std::invoke(OnOccupierAdded, map, OccupierEventArgs<T>(metrics, location, occupier));
 		}
 		return true;
 	}
@@ -263,10 +275,13 @@ public:
 	}
 	void Clear()
 	{
+		for (auto i : occupiers)
+		{
+			delete i.first;
+		}
 		occupiers.clear();
 		delete[] occupierCells;
 		occupierCells = new T[metrics->Length];
-		OnCleared();
 	}
 	bool Contains(int x, int y)
 	{
@@ -297,7 +312,7 @@ public:
 		}
 		if (OnOccupierRemoved)
 		{
-			OnOccupierRemoved(OccupierEventArgs<T>(metrics, point.Value, occupier));
+			std::invoke(OnOccupierRemoved, map, OccupierEventArgs<T>(metrics, point.Value, occupier));
 		}
 		return true;
 	}
@@ -345,6 +360,7 @@ private:
 		{
 			return false;
 		}
+		delete occupier;
 		occupiers.Remove(occupier);
 		for (int i = value.Y; i < metrics->Length; i++)
 		{
@@ -377,6 +393,7 @@ private:
 	{
 		return GetOccupyPoints(location, occupier.OccupyMask, occupier.Width, occupier.Height);
 	}
+	friend class Map;
 };
 class Template
 {
@@ -391,7 +408,6 @@ public:
 		static bool mask[1] = { true };
 		OccupyMask = mask;
 	}
-	Template& operator=(Template&) = default;
 };
 class Overlay
 {
@@ -404,7 +420,6 @@ public:
 	Overlay() : type(nullptr), icon(0), OccupyMask(nullptr), Width(0), Height(0)
 	{
 	}
-	Overlay& operator=(Overlay&) = default;
 };
 class Smudge
 {
@@ -415,29 +430,44 @@ public:
 	Smudge() : type(nullptr), icon(0), data(0)
 	{
 	}
-	Smudge& operator=(Smudge&) = default;
 };
-class Techno
+class Occupier
 {
 public:
 	bool* OccupyMask;
 	int Width;
 	int Height;
-	Techno() : OccupyMask(nullptr), Width(0), Height(0)
+	Occupier() : OccupyMask(nullptr), Width(0), Height(0)
 	{
 	}
-	virtual ~Techno() {}
+	virtual ~Occupier() {}
 };
-class Terrain : public Techno
+class Terrain : public Occupier
 {
 public:
 	const TerrainType* type;
 	int icon;
-	const char *trigger;
-	Terrain() : type(nullptr), icon(0), trigger(nullptr)
+	std::string trigger;
+	Terrain() : type(nullptr), icon(0)
 	{
 	}
-	Terrain& operator=(Terrain&) = default;
+};
+class Structure : public Occupier
+{
+public:
+	const StructType* type;
+	std::string house;
+	int strength;
+	DirectionType direction;
+	std::string trigger;
+	int basePriority;
+	bool isPrebuilt;
+	bool sellable;
+	bool rebuild;
+	std::vector<int> BibCells;
+	Structure() : type(nullptr), strength(0), basePriority(-1), isPrebuilt(true), sellable(false), rebuild(false)
+	{
+	}
 };
 class Map
 {
@@ -447,15 +477,22 @@ public:
 	int height;
 	int size;
 	int theaterid;
+	std::string player;
+	std::string baseplayer;
 	CellMetrics* metrics;
 	CellGrid<Template>* templates;
 	CellGrid<Overlay>* overlays;
 	CellGrid<Smudge>* smudges;
-	OccupierSet<Techno *> *technos;
+	OccupierSet<Occupier*>* technos;
+	OccupierSet<Occupier*>* buildings;
 	bool isra;
 	int tilesize;
 	Map();
 	~Map();
 	void Load(const char* path);
+	void BuildingsOccupierAddedRA(OccupierEventArgs<Occupier*> args);
+	void AddBibRA(Gdiplus::Point location, Structure* s);
+	void BuildingsOccupierAddedTD(OccupierEventArgs<Occupier*> args);
+	void AddBibTD(Gdiplus::Point location, Structure* s);
 	void Render(Gdiplus::Graphics *graphics);
 };

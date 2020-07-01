@@ -89,7 +89,7 @@ public:
 	int Width;
 	int Height;
 	bool* OccupyMask;
-	TerrainType(char id, const char* name, unsigned char theater, bool istransformable, bool ismine, int width, int height, bool* occupymask, bool isra) : ID(id), Name(name), Theater(theater), IsTransformable(istransformable), IsMine(ismine), Width(width), Height(height), OccupyMask(occupymask)
+	TerrainType(char id, const char* name, unsigned char theater, bool istransformable, bool ismine, int height, int width, bool* occupymask, bool isra) : ID(id), Name(name), Theater(theater), IsTransformable(istransformable), IsMine(ismine), Width(width), Height(height), OccupyMask(occupymask)
 	{
 		if (isra)
 		{

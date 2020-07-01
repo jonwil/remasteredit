@@ -102,51 +102,54 @@
     <ClCompile Include="teamcolor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="structtype.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="TemplateType.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="tileset.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="map.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="overlaytype.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="theatertype.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="structtype.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="infantrytype.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="unittype.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vesseltype.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="cellmetrics.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AircraftType.h">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TerrainType.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="infantrytype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="map.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="overlaytype.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="smudgetype.h">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="texman.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="structtype.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="teamcolor.h">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="cellmetrics.h">
+    <ClInclude Include="TemplateType.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TerrainType.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tileset.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="texman.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unittype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vesseltype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="theatertype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

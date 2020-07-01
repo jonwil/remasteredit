@@ -1,4 +1,10 @@
 #pragma once
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <shlwapi.h>
+#pragma warning(disable: 4458)
+#include <gdiplus.h>
+#pragma warning(default: 4458)
 #include <string>
 #include <map>
 typedef enum SmudgeTypeFlag : char {
@@ -56,7 +62,8 @@ public:
 	int Width;
 	int Height;
 	SmudgeTypeFlag Flag;
-	SmudgeType(char id, const char* name, int width, int height, SmudgeTypeFlag flag, bool isra = false) : ID(id), Name(name), Width(width), Height(height), Flag(flag)
+	Gdiplus::Size Size;
+	SmudgeType(char id, const char* name, int width, int height, SmudgeTypeFlag flag, bool isra = false) : ID(id), Name(name), Width(width), Height(height), Flag(flag), Size(Width, Height)
 	{
 		if (isra)
 		{
