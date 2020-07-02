@@ -105,6 +105,7 @@
     <ClCompile Include="..\utils\STRAW.CPP" />
     <ClCompile Include="..\utils\XPIPE.CPP" />
     <ClCompile Include="..\utils\XSTRAW.CPP" />
+    <ClCompile Include="housetype.cpp" />
     <ClCompile Include="map.cpp" />
     <ClCompile Include="miniz.c" />
     <ClCompile Include="OverlayType.cpp" />
@@ -122,6 +123,7 @@
   <ItemGroup>
     <ClInclude Include="AircraftType.h" />
     <ClInclude Include="cellmetrics.h" />
+    <ClInclude Include="housetype.h" />
     <ClInclude Include="infantrytype.h" />
     <ClInclude Include="map.h" />
     <ClInclude Include="overlaytype.h" />

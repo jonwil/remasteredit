@@ -31,37 +31,3 @@ static SmudgeType SCORCH6RA(SMUDGERA_SCORCH6, "sc6", 1, 1, SMUDGETYPE_NONE, true
 static SmudgeType BIB1RA(SMUDGERA_BIB1, "bib1", 4, 2, SMUDGETYPE_BIB1, true);
 static SmudgeType BIB2RA(SMUDGERA_BIB2, "bib2", 3, 2, SMUDGETYPE_BIB2, true);
 static SmudgeType BIB3RA(SMUDGERA_BIB3, "bib3", 2, 2, SMUDGETYPE_BIB3, true);
-SmudgeType const* const SmudgeType::PointersTD[SMUDGETD_COUNT] = {
-	& CRATER1TD,
-	& CRATER2TD,
-	& CRATER3TD,
-	& CRATER4TD,
-	& CRATER5TD,
-	& CRATER6TD,
-	& SCORCH1TD,
-	& SCORCH2TD,
-	& SCORCH3TD,
-	& SCORCH4TD,
-	& SCORCH5TD,
-	& SCORCH6TD,
-	& BIB1TD,
-	& BIB2TD,
-	& BIB3TD,
-};
-SmudgeType const* const SmudgeType::PointersRA[SMUDGERA_COUNT] = {
-	& CRATER1RA,
-	& CRATER2RA,
-	& CRATER3RA,
-	& CRATER4RA,
-	& CRATER5RA,
-	& CRATER6RA,
-	& SCORCH1RA,
-	& SCORCH2RA,
-	& SCORCH3RA,
-	& SCORCH4RA,
-	& SCORCH5RA,
-	& SCORCH6RA,
-	& BIB1RA,
-	& BIB2RA,
-	& BIB3RA,
-};

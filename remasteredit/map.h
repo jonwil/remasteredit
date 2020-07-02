@@ -14,6 +14,7 @@ class OverlayType;
 class SmudgeType;
 class TerrainType;
 class StructType;
+class HouseType;
 class Map;
 struct DirectionType
 {
@@ -456,7 +457,7 @@ class Structure : public Occupier
 {
 public:
 	const StructType* type;
-	std::string house;
+	HouseType* house;
 	int strength;
 	DirectionType direction;
 	std::string trigger;
@@ -477,8 +478,8 @@ public:
 	int height;
 	int size;
 	int theaterid;
-	std::string player;
-	std::string baseplayer;
+	HouseType* player;
+	HouseType* baseplayer;
 	CellMetrics* metrics;
 	CellGrid<Template>* templates;
 	CellGrid<Overlay>* overlays;

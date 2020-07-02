@@ -100,8 +100,6 @@ public:
 			TerrainMapTD[name] = this;
 		}
 	}
-	static TerrainType const* const PointersRA[TERRAINRA_COUNT];
-	static TerrainType const* const PointersTD[TERRAINTD_COUNT];
 	static std::map<std::string, TerrainType*> TerrainMapTD;
 	static std::map<std::string, TerrainType*> TerrainMapRA;
 };

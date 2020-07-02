@@ -65,10 +65,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 		return 0;
 	}
 	LoadMegs(__argv[1]);
-	TeamColorManager* TheTeamColorManagerTD = new TeamColorManager(TheMegFileManager);
-	TeamColorManager* TheTeamColorManagerRA = new TeamColorManager(TheMegFileManager);
-	TheTeamColorManagerTD->Load("DATA\\XML\\CNCTDTEAMCOLORS.XML");
-	TheTeamColorManagerRA->Load("DATA\\XML\\CNCRATEAMCOLORS.XML");
+	InitTeamColors();
 	InitTextures();
 	InitTilesets();
 	FreeImage_Initialise();
@@ -87,6 +84,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	FreeImage_DeInitialise();
 	ShutdownTilesets();
 	ShutdownTextures();
+	ShutdownTeamColors();
 	delete map;
 	CloseMegs();
 	Gdiplus::GdiplusShutdown(gdiplusToken);

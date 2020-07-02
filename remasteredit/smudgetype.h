@@ -74,8 +74,6 @@ public:
 			SmudgeMapTD[name] = this;
 		}
 	}
-	static SmudgeType const* const PointersRA[SMUDGERA_COUNT];
-	static SmudgeType const* const PointersTD[SMUDGETD_COUNT];
 	static std::map<std::string, SmudgeType*> SmudgeMapTD;
 	static std::map<std::string, SmudgeType*> SmudgeMapRA;
 };

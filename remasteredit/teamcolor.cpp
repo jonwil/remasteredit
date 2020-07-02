@@ -68,3 +68,18 @@ void TeamColorManager::Load(const char* xmlPath)
 		teamColors[item.attribute("Name").value()] = teamColor;
 	}
 }
+TeamColorManager* TheTeamColorManagerTD;
+TeamColorManager* TheTeamColorManagerRA;
+void InitTeamColors()
+{
+	TheTeamColorManagerTD = new TeamColorManager(TheMegFileManager);
+	TheTeamColorManagerRA = new TeamColorManager(TheMegFileManager);
+	TheTeamColorManagerTD->Load("DATA\\XML\\CNCTDTEAMCOLORS.XML");
+	TheTeamColorManagerRA->Load("DATA\\XML\\CNCRATEAMCOLORS.XML");
+}
+
+void ShutdownTeamColors()
+{
+	delete TheTeamColorManagerTD;
+	delete TheTeamColorManagerRA;
+}

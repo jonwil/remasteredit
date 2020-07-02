@@ -205,8 +205,6 @@ public:
 			StructMapTD[Name] = this;
 		}
 	}
-	static StructType const* const PointersRA[STRUCTRA_COUNT];
-	static StructType const* const PointersTD[STRUCTTD_COUNT];
 	static std::map<std::string, StructType*> StructMapTD;
 	static std::map<std::string, StructType*> StructMapRA;
 };

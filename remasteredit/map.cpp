@@ -13,6 +13,8 @@
 #include <Shlwapi.h>
 #include <time.h>
 #include "boolinq.h"
+#include "housetype.h"
+#include "teamcolor.h"
 char _staging_buffer[32000];
 std::map<std::string, const char**> TDTheaters;
 std::map<std::string, const char**> RATheaters;
@@ -220,14 +222,14 @@ void Map::Load(const char* path)
 		char pl[20];
 		ini.Get_String("Basic", "Player", "", pl, 20);
 		_strlwr(pl);
-		player = pl;
+		player = HouseType::HouseMapRA[pl];
 		if (!_stricmp(pl, "USSR") || !_stricmp(pl, "Ukrane") || !_stricmp(pl, "BadGuy"))
 		{
-			baseplayer = "BadGuy";
+			baseplayer = HouseType::HouseMapRA["GoodGuy"];
 		}
 		else
 		{
-			baseplayer = "GoodGuy";
+			baseplayer = HouseType::HouseMapRA["BadGuy"];
 		}
 		width = RA_MAP_CELL_W;
 		height = RA_MAP_CELL_H;
@@ -382,7 +384,7 @@ void Map::Load(const char* path)
 				s->OccupyMask = s->type->OccupyMask;
 				s->Width = s->type->Width;
 				s->Height = s->type->Height;
-				s->house = house;
+				s->house = HouseType::HouseMapRA[house];
 				s->strength = strength;
 				s->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
 				s->trigger = trigger;
@@ -396,7 +398,7 @@ void Map::Load(const char* path)
 			const char* p = ini.Get_Entry("Base", i);
 			char base[200];
 			ini.Get_String("Base", p, nullptr, base, 200);
-			if (_stricmp(p, "Player") && _stricmp(p, "Count") && strlen(p) == 3)
+			if (_stricmp(p, "Count") && strlen(p) == 3)
 			{
 				int priority = atoi(p);
 				char* name = strtok(base, ",");
@@ -430,7 +432,7 @@ void Map::Load(const char* path)
 			}
 			else if (!_stricmp(p, "Player"))
 			{
-				baseplayer = base;
+				baseplayer = HouseType::HouseMapRA[base];
 			}
 		}
 	}
@@ -446,14 +448,14 @@ void Map::Load(const char* path)
 		char pl[20];
 		ini.Get_String("Basic", "Player", "", pl, 20);
 		_strlwr(pl);
-		player = pl;
+		player = HouseType::HouseMapTD[pl];
 		if (!_stricmp(pl, "BadGuy"))
 		{
-			baseplayer = "BadGuy";
+			baseplayer = HouseType::HouseMapTD["GoodGuy"];
 		}
 		else
 		{
-			baseplayer = "GoodGuy";
+			baseplayer = HouseType::HouseMapTD["BadGuy"];
 		}
 		width = TD_MAP_CELL_W;
 		height = TD_MAP_CELL_H;
@@ -581,7 +583,7 @@ void Map::Load(const char* path)
 				s->OccupyMask = s->type->OccupyMask;
 				s->Width = s->type->Width;
 				s->Height = s->type->Height;
-				s->house = house;
+				s->house = HouseType::HouseMapTD[house];
 				s->strength = strength;
 				s->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
 				s->trigger = trigger;
@@ -1515,7 +1517,16 @@ void Map::Render(Gdiplus::Graphics *graphics)
 		Gdiplus::Rect buildingBounds;
 		Tile* tile;
 		Tile* factoryOverlayTile;
-		if (TheTilesetManager->GetTeamColorTileData(building->type->TileName.c_str(), num, nullptr, tile))
+		TeamColor* bcolor;
+		if (isra)
+		{
+			bcolor = TheTeamColorManagerRA->GetColor(building->house->StructColor.c_str());
+		}
+		else
+		{
+			bcolor = TheTeamColorManagerTD->GetColor(building->house->StructColor.c_str());
+		}
+		if (TheTilesetManager->GetTeamColorTileData(building->type->TileName.c_str(), num, bcolor, tile))
 		{
 			Gdiplus::Point location(topLeft.X * tilesize, topLeft.Y * tilesize);
 			Gdiplus::Size size1(tile->Image->GetWidth() / tilescale, tile->Image->GetHeight() / tilescale);
@@ -1535,7 +1546,7 @@ void Map::Render(Gdiplus::Graphics *graphics)
 						shape = 10;
 					}
 				}
-				TheTilesetManager->GetTeamColorTileData(building->type->FactoryOverlay.c_str(), shape, nullptr, factoryOverlayTile);
+				TheTilesetManager->GetTeamColorTileData(building->type->FactoryOverlay.c_str(), shape, bcolor, factoryOverlayTile);
 			}
 			if (factoryOverlayTile != nullptr)
 			{

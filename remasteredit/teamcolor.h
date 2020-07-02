@@ -61,3 +61,7 @@ public:
     }
     void Load(const char* xmlPath);
 };
+extern TeamColorManager* TheTeamColorManagerTD;
+extern TeamColorManager* TheTeamColorManagerRA;
+void InitTeamColors();
+void ShutdownTeamColors();

@@ -105,6 +105,9 @@
     <ClCompile Include="structtype.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="housetype.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cellmetrics.h">
@@ -150,6 +153,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="theatertype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="housetype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
