@@ -176,7 +176,7 @@ public:
 	{
 		if (!Contains(x, y))
 		{
-			return T();
+			return nullptr;
 		}
 		return occupierCells[(y * metrics->Width) + x];
 	}
@@ -185,7 +185,7 @@ public:
 		Gdiplus::Point location;
 		if (!metrics->GetLocation(cell, location))
 		{
-			return T();
+			return nullptr;
 		}
 		return Get(location);
 	}
@@ -202,6 +202,7 @@ public:
 	OccupierSet(CellMetrics* m) : metrics(m), OnOccupierAdded(nullptr), OnOccupierRemoved(nullptr)
 	{
 		occupierCells = new T[metrics->Length];
+		memset(occupierCells, 0, sizeof(T) * metrics->Length);
 	}
 	~OccupierSet()
 	{
@@ -283,6 +284,7 @@ public:
 		occupiers.clear();
 		delete[] occupierCells;
 		occupierCells = new T[metrics->Length];
+		memset(occupierCells, 0, sizeof(T) * metrics->Length);
 	}
 	bool Contains(int x, int y)
 	{
@@ -341,7 +343,7 @@ private:
 			return false;
 		}
 		std::vector<Gdiplus::Point> array = GetOccupyPoints(location, occupyMask, width, height);
-		if (from(array).any([&](Gdiplus::Point p) {return !Contains(p) || Get(p) == nullptr; }))
+		if (from(array).any([&](Gdiplus::Point p) {return !Contains(p) || Get(p) != nullptr; }))
 		{
 			return false;
 		}
