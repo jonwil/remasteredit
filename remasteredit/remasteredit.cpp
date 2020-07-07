@@ -108,11 +108,11 @@ Gdiplus::Point MapToClient(Gdiplus::Point point)
 	return pt;
 }
 
-Gdiplus::Point MapToClient(Gdiplus::Size size)
+Gdiplus::Size MapToClient(Gdiplus::Size size)
 {
 	Gdiplus::Point pt = size;
 	compositeTransform->TransformPoints(&pt);
-	return pt;
+	return Gdiplus::Size(pt.X,pt.Y);
 }
 
 Gdiplus::Rect MapToClient(Gdiplus::Rect rectangle)
