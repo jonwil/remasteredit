@@ -127,6 +127,7 @@
     <ClInclude Include="infantrytype.h" />
     <ClInclude Include="map.h" />
     <ClInclude Include="overlaytype.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="smudgetype.h" />
     <ClInclude Include="structtype.h" />
     <ClInclude Include="teamcolor.h" />
@@ -137,6 +138,9 @@
     <ClInclude Include="tileset.h" />
     <ClInclude Include="unittype.h" />
     <ClInclude Include="vesseltype.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="remasteredit.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
