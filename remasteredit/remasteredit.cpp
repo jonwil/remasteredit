@@ -254,6 +254,52 @@ void UpdateCamera()
 	InvalidateRect(ScrollWnd, nullptr, FALSE);
 }
 
+void SetZoom(int value)
+{
+	int num = max(minZoom, min(maxZoom, value));
+	if (zoom != num)
+	{
+		zoom = num;
+		POINT pt;
+		GetCursorPos(&pt);
+		ScreenToClient(ScrollWnd, &pt);
+		Gdiplus::Point point;
+		point.X = pt.x;
+		point.Y = pt.y;
+		referencePositionsMap = ClientToMap(point);
+		referencePositionsClient = Gdiplus::SizeF((float)point.X / (float)clientWidth, (float)point.Y / (float)clientHeight);
+		referenceset = true;
+		UpdateCamera();
+	}
+}
+
+void SetZoomStep(int value)
+{
+	if (zoomStep != value)
+	{
+		zoomStep = value;
+		SetZoom(zoom / zoomStep * zoomStep);
+	}
+}
+
+void SetMinZoom(int value)
+{
+	if (minZoom != value)
+	{
+		minZoom = value;
+		SetZoom(zoom);
+	}
+}
+
+void SetMaxZoom(int value)
+{
+	if (maxZoom != value)
+	{
+		maxZoom = value;
+		SetZoom(zoom);
+	}
+}
+
 void InvalidateScroll()
 {
 	if (!updatingCamera && (lastScrollPosition.X != AutoScrollPosition.X || lastScrollPosition.Y != AutoScrollPosition.Y))
@@ -313,6 +359,17 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 					}
 					map = new Map();
 					map->Load(fname);
+					if (map->isra)
+					{
+						SetMaxZoom(16);
+						SetZoomStep(2);
+					}
+					else
+					{
+						SetMaxZoom(8);
+						SetZoomStep(1);
+					}
+					SetMinZoom(1);
 					data = new BYTE[map->tilesize * map->width * map->tilesize * map->height * 4];
 					mapImage = new Gdiplus::Bitmap(map->tilesize * map->width, map->tilesize * map->height, map->tilesize * map->width * 4, PixelFormat32bppARGB, data);
 					graphics = Gdiplus::Graphics::FromImage(mapImage);
@@ -351,6 +408,11 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	return 0;
 }
 
+template <typename T> int sgn(T val)
+{
+	return (T(0) < val) - (val < T(0));
+}
+
 LRESULT CALLBACK ScrollWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
@@ -372,6 +434,12 @@ LRESULT CALLBACK ScrollWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 			UpdateCamera();
 		}
 		return DefWindowProc(hWnd, message, wParam, lParam);
+	case WM_MOUSEWHEEL:
+		{
+			float delta = GET_WHEEL_DELTA_WPARAM(wParam);
+			SetZoom(zoom + zoomStep * sgn(delta));
+		}
+		break;
 	case WM_PAINT:
 		{
 			PAINTSTRUCT ps;
