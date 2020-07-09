@@ -15,6 +15,8 @@
 #include "texman.h"
 #include "resource.h"
 #include <commdlg.h>
+#include <windowsx.h>
+void UpdateCamera();
 int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
 	UINT  num = 0;          // number of image encoders
@@ -100,6 +102,7 @@ int zoom = 1;
 int clientWidth = 0;
 int clientHeight = 0;
 Gdiplus::Size AutoScrollMinSize;
+Gdiplus::Size lastScrollMinSize;
 Gdiplus::Point AutoScrollPosition(0,0);
 Gdiplus::Point MapToClient(Gdiplus::Point point)
 {
@@ -111,7 +114,9 @@ Gdiplus::Point MapToClient(Gdiplus::Point point)
 Gdiplus::Size MapToClient(Gdiplus::Size size)
 {
 	Gdiplus::Point pt = size;
-	compositeTransform->TransformPoints(&pt);
+	Gdiplus::REAL m[6];
+	compositeTransform->GetElements(m);
+	compositeTransform->TransformVectors(&pt);
 	return Gdiplus::Size(pt.X,pt.Y);
 }
 
@@ -134,7 +139,7 @@ Gdiplus::Point ClientToMap(Gdiplus::Point point)
 Gdiplus::Point ClientToMap(Gdiplus::Size size)
 {
 	Gdiplus::Point pt = size;
-	invCompositeTransform->TransformPoints(&pt);
+	invCompositeTransform->TransformVectors(&pt);
 	return pt;
 }
 
@@ -166,6 +171,123 @@ void RecalculateTransforms()
 	invCompositeTransform->Multiply(compositeTransform);
 	invCompositeTransform->Invert();
 	invCompositeTransform->GetElements(m);
+}
+
+bool hscroll = false;
+bool vscroll = false;
+void UpdateScrollBars()
+{
+	bool needhscroll = false;
+	bool needvscroll = false;
+	Gdiplus::Rect currentClient(0, 0, clientWidth, clientHeight);
+	Gdiplus::Rect fullClient = currentClient;
+	Gdiplus::Rect minClient = currentClient;
+	if (hscroll)
+	{
+		fullClient.Height += GetSystemMetrics(SM_CXHSCROLL);
+	}
+	else
+	{
+		minClient.Height -= GetSystemMetrics(SM_CXHSCROLL);
+	}
+	if (vscroll)
+	{
+		fullClient.Width += GetSystemMetrics(SM_CYVSCROLL);
+	}
+	else
+	{
+		minClient.Width -= GetSystemMetrics(SM_CYVSCROLL);
+	}
+	int maxX = minClient.Width;
+	int maxY = minClient.Height;
+	if (AutoScrollMinSize.Width || AutoScrollMinSize.Height)
+	{
+		maxX = AutoScrollMinSize.Width;
+		maxY = AutoScrollMinSize.Height;
+		needhscroll = true;
+		needvscroll = true;
+	}
+	if (maxX <= fullClient.Width)
+	{
+		needhscroll = false;
+	}
+	if (maxY <= fullClient.Height)
+	{
+		needvscroll = false;
+	}
+	Gdiplus::Rect clientToBe = fullClient;
+	if (needhscroll)
+	{
+		clientToBe.Height -= GetSystemMetrics(SM_CXHSCROLL);
+	}
+	if (needvscroll)
+	{
+		clientToBe.Width -= GetSystemMetrics(SM_CYVSCROLL);
+	}
+	if (needhscroll && maxY > clientToBe.Height)
+	{
+		needvscroll = true;
+	}
+	if (needvscroll && maxX > clientToBe.Width)
+	{
+		needhscroll = true;
+	}
+	if (!needhscroll)
+	{
+		maxX = clientToBe.Width;
+	}
+	if (!needvscroll)
+	{
+		maxY = clientToBe.Height;
+	}
+	bool scroll = false;
+	if (needhscroll != hscroll || needvscroll != vscroll)
+	{
+		scroll = true;
+	}
+	if (clientWidth != clientToBe.Width || clientHeight != clientToBe.Height)
+	{
+		scroll = true;
+	}
+	if (lastScrollMinSize.Width != AutoScrollMinSize.Width || lastScrollMinSize.Height != AutoScrollMinSize.Height)
+	{
+		scroll = true;
+	}
+	clientWidth = clientToBe.Width;
+	clientHeight = clientToBe.Height;
+	if (scroll)
+	{
+		hscroll = needhscroll;
+		vscroll = needvscroll;
+		ShowScrollBar(ScrollWnd, SB_HORZ, needhscroll);
+		ShowScrollBar(ScrollWnd, SB_VERT, needvscroll);
+		SetWindowPos(ScrollWnd, nullptr, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER);
+		if (needhscroll)
+		{
+			SCROLLINFO si;
+			si.cbSize = sizeof(si);
+			si.fMask = SIF_PAGE | SIF_POS | SIF_RANGE;
+			si.nMin = 0;
+			si.nMax = AutoScrollMinSize.Width - 1;
+			si.nPage = clientWidth;
+			si.nPos = -AutoScrollPosition.X;
+			si.nTrackPos = 0;
+			SetScrollInfo(ScrollWnd, SB_HORZ, &si, TRUE);
+		}
+		if (needvscroll)
+		{
+			SCROLLINFO si;
+			si.cbSize = sizeof(si);
+			si.fMask = SIF_PAGE | SIF_POS | SIF_RANGE;
+			si.nMin = 0;
+			si.nMax = AutoScrollMinSize.Height - 1;
+			si.nPage = clientHeight;
+			si.nPos = -AutoScrollPosition.Y;
+			si.nTrackPos = 0;
+			SetScrollInfo(ScrollWnd, SB_VERT, &si, TRUE);
+		}
+		UpdateCamera();
+	}
 }
 
 void SuspendDrawing()
@@ -244,11 +366,17 @@ void UpdateCamera()
 		referenceset = false;
 	}
 	SuspendDrawing();
+	lastScrollMinSize = AutoScrollMinSize;
 	AutoScrollMinSize = empty3;
+	UpdateScrollBars();
 	Gdiplus::Point loc;
 	cameraBounds.GetLocation(&loc);
 	AutoScrollPosition = (Gdiplus::Point)MapToClient(Gdiplus::Size(loc.X, loc.Y));
+	AutoScrollPosition.X = -AutoScrollPosition.X;
+	AutoScrollPosition.Y = -AutoScrollPosition.Y;
 	lastScrollPosition = AutoScrollPosition;
+	SetScrollPos(ScrollWnd, SB_HORZ, -AutoScrollPosition.X, true);
+	SetScrollPos(ScrollWnd, SB_VERT, -AutoScrollPosition.Y, true);
 	ResumeDrawing();
 	updatingCamera = false;
 	InvalidateRect(ScrollWnd, nullptr, FALSE);
@@ -383,6 +511,14 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 			break;
 		}
 		break;
+		case WM_SIZE:
+		{
+			WORD cx = LOWORD(lParam);
+			WORD cy = HIWORD(lParam);
+			SetWindowPos(ScrollWnd, nullptr, 0, 0, cx, cy, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER);
+			InvalidateRect(ScrollWnd, nullptr, TRUE);
+		}
+		return DefWindowProc(hWnd, message, wParam, lParam);
 	case WM_DESTROY:
 		if (data)
 		{
@@ -413,6 +549,43 @@ template <typename T> int sgn(T val)
 	return (T(0) < val) - (val < T(0));
 }
 
+int GetScrollPosition(int bar, UINT code)
+{
+	SCROLLINFO si = {};
+	si.cbSize = sizeof(SCROLLINFO);
+	si.fMask = SIF_PAGE | SIF_POS | SIF_RANGE | SIF_TRACKPOS;
+	GetScrollInfo(ScrollWnd, bar, &si);
+	const int minPos = si.nMin;
+	const int maxPos = si.nMax - (si.nPage - 1);
+	int result = -1;
+	switch (code)
+	{
+	case SB_THUMBPOSITION:
+	case SB_THUMBTRACK:
+		result = si.nTrackPos;
+		break;
+	case SB_LINEUP:
+		result = max(si.nPos - 5, minPos);
+		break;
+	case SB_LINEDOWN:
+		result = min(si.nPos + 5, maxPos);
+		break;
+	case SB_PAGEUP:
+		result = max(si.nPos - (int)si.nPage, minPos);
+		break;
+	case SB_PAGEDOWN:
+		result = min(si.nPos + (int)si.nPage, maxPos);
+		break;
+	case SB_TOP:
+		result = minPos;
+		break;
+	case SB_BOTTOM:
+		result = maxPos;
+		break;
+	}
+	return result;
+}
+
 LRESULT CALLBACK ScrollWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
@@ -434,10 +607,41 @@ LRESULT CALLBACK ScrollWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 			UpdateCamera();
 		}
 		return DefWindowProc(hWnd, message, wParam, lParam);
+	case WM_HSCROLL:
+		{
+			int scrollPos = GetScrollPosition(SB_HORZ, LOWORD(wParam));
+			if (scrollPos == -1)
+			{
+				break;
+			}
+			SetScrollPos(hWnd, SB_HORZ, scrollPos, true);
+			AutoScrollPosition.X = -scrollPos;
+			InvalidateScroll();
+		}
+		break;
+	case WM_VSCROLL:
+		{
+			int scrollPos = GetScrollPosition(SB_VERT, LOWORD(wParam));
+			if (scrollPos == -1)
+			{
+				break;
+			}
+			SetScrollPos(hWnd, SB_VERT, scrollPos, true);
+			AutoScrollPosition.Y = -scrollPos;
+			InvalidateScroll();
+		}
+		break;
 	case WM_MOUSEWHEEL:
 		{
 			float delta = GET_WHEEL_DELTA_WPARAM(wParam);
 			SetZoom(zoom + zoomStep * sgn(delta));
+		}
+		break;
+	case WM_ERASEBKGND:
+		{
+			DefWindowProc(hWnd, message, wParam, lParam);
+			Gdiplus::Graphics g((HDC)wParam);
+			g.Clear(GetSysColor(COLOR_BTNFACE));
 		}
 		break;
 	case WM_PAINT:
@@ -448,9 +652,6 @@ LRESULT CALLBACK ScrollWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
 			{
 				Gdiplus::Graphics g(hdc);
 				InvalidateScroll();
-				Gdiplus::SolidBrush black((Gdiplus::ARGB)(Gdiplus::Color::Black));
-				Gdiplus::Rect r(0, 0, clientWidth, clientHeight);
-				g.FillRectangle(&black, r);
 				if (mapImage)
 				{
 					g.SetTransform(compositeTransform);
@@ -534,7 +735,9 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	GetClientRect(MainWnd, &r);
 	clientWidth = r.right - r.left;
 	clientHeight = r.bottom - r.top;
-	ScrollWnd = CreateWindowEx(0l, "ScrollWindow", nullptr, WS_CHILDWINDOW | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0, 0, clientWidth, clientHeight, MainWnd, nullptr, hInstance, nullptr);
+	ScrollWnd = CreateWindowEx(0l, "ScrollWindow", nullptr, WS_CHILDWINDOW | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_HSCROLL | WS_VSCROLL, 0, 0, clientWidth, clientHeight, MainWnd, nullptr, hInstance, nullptr);
+	ShowScrollBar(ScrollWnd, SB_HORZ, hscroll);
+	ShowScrollBar(ScrollWnd, SB_VERT, vscroll);
 	UpdateWindow(MainWnd);
 	UpdateWindow(ScrollWnd);
 	MSG msg;
