@@ -1,6 +1,5 @@
 #pragma once
 #include "theatertype.h"
-#include <string>
 typedef enum TemplateTypeFlag : unsigned char
 {
 	TEMPLATETYPE_NONE = 0,
@@ -656,11 +655,27 @@ public:
 	std::string Name;
 	unsigned char IconWidth;
 	unsigned char IconHeight;
+	bool* IconMask;
+	Gdiplus::Bitmap* Thumbnail;
 	unsigned char Theater;
 	TemplateTypeFlag Flag;
-	TemplateType(unsigned short id, const char* name, unsigned char iconWidth, unsigned char iconHeight, unsigned char theater, TemplateTypeFlag flag) : ID(id), Name(name), IconWidth(iconWidth), IconHeight(iconHeight), Theater(theater), Flag(flag)
+	TemplateType(unsigned short id, const char* name, unsigned char iconWidth, unsigned char iconHeight, unsigned char theater, TemplateTypeFlag flag) : ID(id), Name(name), IconWidth(iconWidth), IconHeight(iconHeight), Theater(theater), Flag(flag), IconMask(nullptr), Thumbnail(nullptr)
 	{
 	}
-	static TemplateType const* const PointersRA[TEMPLATERA_COUNT];
-	static TemplateType const* const PointersTD[TEMPLATETD_COUNT];
+	void Free()
+	{
+		if (IconMask)
+		{
+			delete[] IconMask;
+			IconMask = nullptr;
+		}
+		if (Thumbnail)
+		{
+			delete Thumbnail;
+			Thumbnail = nullptr;
+		}
+	}
+	static TemplateType * const PointersRA[TEMPLATERA_COUNT];
+	static TemplateType * const PointersTD[TEMPLATETD_COUNT];
+	void Init();
 };

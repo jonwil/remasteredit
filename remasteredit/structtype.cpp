@@ -1,5 +1,8 @@
+#include "global.h"
 #include "structtype.h"
 #include "theatertype.h"
+#include "map.h"
+#include "maprender.h"
 std::map<std::string, StructType*> StructType::StructMapTD;
 std::map<std::string, StructType*> StructType::StructMapRA;
 static bool mask1[9] = { false, false, false, true, true, true, true, true, true };
@@ -142,3 +145,20 @@ static StructType RABARREL3(STRUCTRA_BARREL3, "brl3", "TEXT_STRUCTURE_RA_BRL3", 
 static StructType RAQUEEN(STRUCTRA_QUEEN, "quee", "TEXT_STRUCTURE_RA_QUEE", 1, 2, mask7, 1, 2, mask7, false, "Special", THEATERF_TEMPERATERA | THEATERF_SNOWRA | THEATERF_INTERIORRA, false, false, "", true);
 static StructType RALARVA1(STRUCTRA_LARVA1, "lar1", "TEXT_STRUCTURE_RA_LAR1", 1, 1, mask2, 1, 1, mask2, false, "Special", THEATERF_TEMPERATERA | THEATERF_SNOWRA | THEATERF_INTERIORRA, false, false, "", true);
 static StructType RALARVA2(STRUCTRA_LARVA2, "lar2", "TEXT_STRUCTURE_RA_LAR2", 1, 1, mask2, 1, 1, mask2, false, "Special", THEATERF_TEMPERATERA | THEATERF_SNOWRA | THEATERF_INTERIORRA, false, false, "", true);
+
+void StructType::Init(bool isra, HouseType *house, DirectionType direction)
+{
+	Structure s;
+	s.type = this;
+	s.house = house;
+	s.strength = 256;
+	s.direction = direction;
+	std::pair<Gdiplus::Rect, RenderFunc> v = MapRender::Render(isra, Gdiplus::Point(0, 0), Gdiplus::Size(TileWidth,TileHeight), TileScale, &s);
+	if (!v.first.Equals(Gdiplus::Rect()))
+	{
+		Thumbnail = new Gdiplus::Bitmap(v.first.Width, v.first.Height);
+		Gdiplus::Graphics* g = Gdiplus::Graphics::FromImage(Thumbnail);
+		v.second(g,v.first);
+		delete g;
+	}
+}

@@ -108,12 +108,30 @@
     <ClCompile Include="housetype.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="maprender.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="window.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mainwindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mappanel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AircraftType.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="cellmetrics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AircraftType.h">
+    <ClInclude Include="global.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="housetype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="infantrytype.h">
@@ -123,6 +141,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="overlaytype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="smudgetype.h">
@@ -140,10 +161,13 @@
     <ClInclude Include="TerrainType.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="tileset.h">
+    <ClInclude Include="texman.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="texman.h">
+    <ClInclude Include="theatertype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tileset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="unittype.h">
@@ -152,13 +176,16 @@
     <ClInclude Include="vesseltype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="theatertype.h">
+    <ClInclude Include="maprender.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="housetype.h">
+    <ClInclude Include="window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
+    <ClInclude Include="mainwindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mappanel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

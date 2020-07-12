@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 typedef enum InfantryTypeTD : char {
 	INFANTRYTD_NONE = -1,
 	INFANTRYTD_E1,

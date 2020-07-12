@@ -1,6 +1,4 @@
 #pragma once
-#include <string>
-#include <map>
 typedef enum HousesTypeTD : char {
 	HOUSETD_NONE = -1,
 	HOUSETD_GOOD,					// Global Defense Initiative

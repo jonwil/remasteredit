@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 typedef enum AircraftTypeTD : char {
 	AIRCRAFTTD_TRANSPORT,
 	AIRCRAFTTD_A10,

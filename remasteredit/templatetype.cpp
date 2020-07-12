@@ -1,4 +1,6 @@
+#include "global.h"
 #include "TemplateType.h"
+#include "tileset.h"
 static TemplateType TDCLEAR1(TEMPLATETD_CLEAR1, "clear1", 1, 1, THEATERF_WINTERTD | THEATERF_DESERTTD | THEATERF_TEMPERATETD, TEMPLATETYPE_CLEAR);
 static TemplateType TDWATER(TEMPLATETD_WATER, "w1", 1, 1, THEATERF_WINTERTD | THEATERF_TEMPERATETD | THEATERF_DESERTTD, TEMPLATETYPE_NONE);
 static TemplateType TDWATER2(TEMPLATETD_WATER2, "w2", 2, 2, THEATERF_WINTERTD | THEATERF_TEMPERATETD, TEMPLATETYPE_NONE);
@@ -216,7 +218,7 @@ static TemplateType TDSHORE61(TEMPLATETD_SHORE61, "sh61", 2, 3, THEATERF_DESERTT
 static TemplateType TDSHORE62(TEMPLATETD_SHORE62, "sh62", 6, 1, THEATERF_DESERTTD, TEMPLATETYPE_NONE);
 static TemplateType TDSHORE63(TEMPLATETD_SHORE63, "sh63", 4, 1, THEATERF_DESERTTD, TEMPLATETYPE_NONE);
 
-TemplateType const* const TemplateType::PointersTD[TEMPLATETD_COUNT] = {
+TemplateType * const TemplateType::PointersTD[TEMPLATETD_COUNT] = {
 	& TDCLEAR1,
 	& TDWATER,
 	& TDWATER2,
@@ -833,7 +835,7 @@ static TemplateType RAXTRA0015(TEMPLATERA_XTRA0015, "xtra0015", 3, 2, THEATERF_I
 static TemplateType RAXTRA0016(TEMPLATERA_XTRA0016, "xtra0016", 2, 4, THEATERF_INTERIORRA, TEMPLATETYPE_NONE);
 static TemplateType RAHILL01(TEMPLATERA_HILL01, "hill01", 4, 3, THEATERF_TEMPERATERA, TEMPLATETYPE_NONE);
 
-TemplateType const* const TemplateType::PointersRA[TEMPLATERA_COUNT] = {
+TemplateType * const TemplateType::PointersRA[TEMPLATERA_COUNT] = {
 	& RACLEAR1,
 	& RAWATER,
 	& RAWATER2,
@@ -1236,3 +1238,29 @@ TemplateType const* const TemplateType::PointersRA[TEMPLATERA_COUNT] = {
 	& RAXTRA0016,
 	& RAHILL01,
 };
+
+void TemplateType::Init()
+{
+	Gdiplus::Size size(32, 32);
+	int num = max(IconWidth, IconHeight);
+	Thumbnail = new Gdiplus::Bitmap(num * size.Width, num * size.Height);
+	IconMask = new bool[IconWidth * IconHeight];
+	memset(IconMask, 0, sizeof(IconMask));
+	Gdiplus::Graphics *g = Gdiplus::Graphics::FromImage(Thumbnail);
+	g->Clear(Gdiplus::Color::Transparent);
+	int num2 = 0;
+	for (int i = 0; i < IconHeight; i++)
+	{
+		for (int j = 0; j < IconWidth; j++)
+		{
+			Tile *tile;
+			if (TheTilesetManager->GetTileData(Name.c_str(), num2, tile))
+			{
+				g->DrawImage(tile->Image, j * size.Width, i * size.Height, size.Width, size.Height);
+				IconMask[j + i * IconWidth] = true;
+			}
+			num2++;
+		}
+	}
+	delete g;
+}

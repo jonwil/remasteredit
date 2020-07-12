@@ -1,14 +1,7 @@
 #pragma once
-#include <string>
-#include <map>
-#include <vector>
 #include "cellmetrics.h"
 #include "boolinq.h"
 using namespace boolinq;
-namespace Gdiplus
-{
-	class Graphics;
-}
 class TemplateType;
 class OverlayType;
 class SmudgeType;
@@ -16,6 +9,28 @@ class TerrainType;
 class StructType;
 class HouseType;
 class Map;
+inline std::set<Gdiplus::Point> GetPoints(Gdiplus::Rect rectangle)
+{
+	std::set<Gdiplus::Point> p;
+	for (int y = rectangle.GetTop(); y < rectangle.GetBottom(); y++)
+	{
+		for (int x = rectangle.GetLeft(); x < rectangle.GetRight(); x++)
+		{
+			p.insert(Gdiplus::Point(x, y));
+		}
+	}
+	return p;
+}
+template <typename T> inline void UnionWith(std::set<T>& set1, std::set<T>& set2)
+{
+	for (auto p : set2)
+	{
+		if (!set1.count(p))
+		{
+			set1.insert(p);
+		}
+	}
+}
 struct DirectionType
 {
 	unsigned char ID;
@@ -50,6 +65,7 @@ template <class T> class CellGrid
 private:
 	const CellMetrics* metrics;
 	T* cells;
+	Map* map;
 public:
 	Gdiplus::Size size;
 	T Get(int x, int y)
@@ -59,13 +75,13 @@ public:
 	void Set(int x, int y, T value)
 	{
 		int cell = (y * metrics->Width) + x;
-		if (cells[cell].type != value.type || cells[cell].icon != value.icon)
+		if (!cells[cell] || cells[cell]->type != value->type || cells[cell]->icon != value->icon)
 		{
 			T oldValue = cells[cell];
 			cells[cell] = value;
 			if (OnCellChanged)
 			{
-				OnCellChanged(CellChangedEventArgs<T>(metrics, Gdiplus::Point(x, y), oldValue, value));
+				std::invoke(OnCellChanged, map, CellChangedEventArgs<T>(metrics, Gdiplus::Point(x, y), oldValue, value));
 			}
 		}
 	}
@@ -85,20 +101,26 @@ public:
 	{
 		return Set(cell % metrics->Width, cell / metrics->Width, value);
 	}
-	void (*OnCellChanged)(CellChangedEventArgs<T> args);
-	void (*OnCleared)();
-	CellGrid(CellMetrics* m) : metrics(m), OnCellChanged(nullptr), OnCleared(nullptr)
+	void (Map::*OnCellChanged)(CellChangedEventArgs<T> args);
+	void (Map::*OnCleared)();
+	CellGrid(CellMetrics* m, Map *ma) : metrics(m), OnCellChanged(nullptr), OnCleared(nullptr), map(ma)
 	{
 		metrics = m;
 		cells = new T[metrics->Length];
+		memset(cells, 0, sizeof(T) * metrics->Length);
 	}
 	void Clear()
 	{
+		for (int i = 0; i < metrics->Length; i++)
+		{
+			delete cells[i];
+		}
 		delete[] cells;
 		cells = new T[metrics->Length];
+		memset(cells, 0, sizeof(T) * metrics->Length);
 		if (OnCleared)
 		{
-			OnCleared();
+			std::invoke(OnCleared, map);
 		}
 	}
 	T Adjacent(Gdiplus::Point location, FacingType facing)
@@ -106,7 +128,7 @@ public:
 		Gdiplus::Point adjacent;
 		if (!metrics->Adjacent(location, facing, adjacent))
 		{
-			return T();
+			return nullptr;
 		}
 		return Get(adjacent);
 	}
@@ -115,12 +137,12 @@ public:
 		Gdiplus::Point location;
 		if (!metrics->GetLocation(cell, location))
 		{
-			return T();
+			return nullptr;
 		}
 		Gdiplus::Point adjacent;
 		if (!metrics->Adjacent(location, facing, adjacent))
 		{
-			return T();
+			return nullptr;
 		}
 		return Get(adjacent);
 	}
@@ -138,7 +160,45 @@ public:
 	}
 	~CellGrid()
 	{
+		for (int i = 0; i < metrics->Length; i++)
+		{
+			delete cells[i];
+		}
 		delete[] cells;
+	}
+	std::vector<std::pair<int, T>> IntersectsWith(std::set<int> celllist)
+	{
+		std::vector<std::pair<int, T>> v;
+		for (auto cell : celllist)
+		{
+			if (metrics->Contains(cell))
+			{
+				T val = Get(cell);
+				if (val->type)
+				{
+					v.push_back(std::make_pair(cell, val));
+				}
+			}
+		}
+		return v;
+	}
+	std::vector<std::pair<int, T>> IntersectsWith(std::set<Gdiplus::Point> locations)
+	{
+		std::vector<std::pair<int, T>> v;
+		for (auto location : locations)
+		{
+			if (metrics->Contains(location))
+			{
+				T val = Get(location);
+				if (val->type)
+				{
+					int cell;
+					metrics->GetCell(location, cell);
+					v.push_back(std::make_pair(cell, val));
+				}
+			}
+		}
+		return v;
 	}
 };
 template <class T> class OccupierEventArgs
@@ -191,14 +251,22 @@ public:
 	}
 	Gdiplus::Point Get(T occupier)
 	{
-		if (occupiers.count(T))
+		if (occupiers.count(occupier))
 		{
-			return occupiers(occupier);
+			return occupiers[occupier];
 		}
 		return Gdiplus::Point(-1,-1);
 	}
 	void (Map::*OnOccupierAdded)(OccupierEventArgs<T> args);
 	void (Map::*OnOccupierRemoved)(OccupierEventArgs<T> args);
+	auto begin()
+	{
+		return occupiers.begin();
+	}
+	auto end()
+	{
+		return occupiers.end();
+	}
 	OccupierSet(CellMetrics* m) : metrics(m), OnOccupierAdded(nullptr), OnOccupierRemoved(nullptr)
 	{
 		occupierCells = new T[metrics->Length];
@@ -286,6 +354,10 @@ public:
 		occupierCells = new T[metrics->Length];
 		memset(occupierCells, 0, sizeof(T) * metrics->Length);
 	}
+	void ClearOccupiers()
+	{
+		occupiers.clear();
+	}
 	bool Contains(int x, int y)
 	{
 		if (x >= 0 && x < metrics->Height && y >= 0)
@@ -315,7 +387,7 @@ public:
 		}
 		if (OnOccupierRemoved)
 		{
-			std::invoke(OnOccupierRemoved, map, OccupierEventArgs<T>(metrics, point.Value, occupier));
+			std::invoke(OnOccupierRemoved, map, OccupierEventArgs<T>(metrics, point, occupier));
 		}
 		return true;
 	}
@@ -364,7 +436,7 @@ private:
 			return false;
 		}
 		delete occupier;
-		occupiers.Remove(occupier);
+		occupiers.erase(occupier);
 		for (int i = value.Y; i < metrics->Length; i++)
 		{
 			for (int j = value.X; j < metrics->Width; j++)
@@ -398,40 +470,85 @@ private:
 	}
 	friend class Map;
 };
-class Template
+template <class T> class OverlapperSet
 {
 public:
-	const TemplateType* type;
-	int icon;
-	bool* OccupyMask;
-	int Width;
-	int Height;
-	Template() : type(nullptr), icon(0), Width(1), Height(1)
+	CellMetrics* m;
+	std::map<T, Gdiplus::Rect> overlappers;
+	bool GetRect(T overlapper, Gdiplus::Rect& out)
 	{
-		static bool mask[1] = { true };
-		OccupyMask = mask;
+		if (Contains(overlapper))
+		{
+			out = overlappers[overlapper];
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
-};
-class Overlay
-{
-public:
-	const OverlayType* type;
-	int icon;
-	bool* OccupyMask;
-	int Width;
-	int Height;
-	Overlay() : type(nullptr), icon(0), OccupyMask(nullptr), Width(0), Height(0)
+	OverlapperSet(CellMetrics* metrics) : m(metrics)
 	{
 	}
-};
-class Smudge
-{
-public:
-	const SmudgeType* type;
-	int icon;
-	int data;
-	Smudge() : type(nullptr), icon(0), data(0)
+	bool Add(Gdiplus::Point location, T overlapper)
 	{
+		if (overlapper == nullptr || Contains(overlapper))
+		{
+			return false;
+		}
+		Gdiplus::Rect overlapBounds = overlapper->OverlapBounds;
+		overlapBounds.Offset(location);
+		overlappers[overlapper] = overlapBounds;
+		return true;
+	}
+	bool Add(int x, int y, T occupier)
+	{
+		return Add(Gdiplus::Point(x, y), occupier);
+	}
+	bool Add(int cell, T overlapper)
+	{
+		Gdiplus::Point location;
+		if (!m->GetLocation(cell, location))
+		{
+			return false;
+		}
+		return Add(location, overlapper);
+	}
+	void Clear()
+	{
+		overlappers.clear();
+	}
+	bool Contains(T occupier)
+	{
+		return overlappers.count(occupier);
+	}
+	bool Remove(T overlapper)
+	{
+		Gdiplus::Rect rectangle;
+		if (overlapper == nullptr || !TryGetValue(overlappers, overlapper, rectangle))
+		{
+			return false;
+		}
+		overlappers.erase(overlapper);
+		return true;
+	}
+	std::set<Gdiplus::Point> Overlaps(std::set<Gdiplus::Rect> rectangles)
+	{
+		std::set<Gdiplus::Rect> rectangleSet = rectangles;
+		unsigned int count;
+		do
+		{
+			count = rectangleSet.size();
+			auto other = from(overlappers).where([rectangleSet](std::pair<T, Gdiplus::Rect> x) {return from(rectangleSet).any([x](Gdiplus::Rect y) {return !!x.second.IntersectsWith(y); }); }).select([](std::pair<T, Gdiplus::Rect> r) {return r.second; }).toStdSet();
+			UnionWith(rectangleSet, other);
+		} while (rectangleSet.size() != count);
+		std::set<Gdiplus::Point> points = from(rectangleSet).selectMany([](Gdiplus::Rect x) {return from(GetPoints(x)); }).toStdSet();
+		return points;
+	}
+	std::set<Gdiplus::Point> Overlaps(std::set<Gdiplus::Point> points)
+	{
+		auto s = from(points).select([](Gdiplus::Point p) {return Gdiplus::Rect(p, Gdiplus::Size(1, 1)); }).toStdSet();
+		return Overlaps(s);
 	}
 };
 class Occupier
@@ -445,7 +562,49 @@ public:
 	}
 	virtual ~Occupier() {}
 };
-class Terrain : public Occupier
+class Overlapper
+{
+public:
+	Gdiplus::Rect OverlapBounds;
+	virtual ~Overlapper() {}
+};
+class Template : public Occupier
+{
+public:
+	const TemplateType* type;
+	int icon;
+	Template() : type(nullptr), icon(0)
+	{
+		static bool mask[1] = { true };
+		OccupyMask = mask;
+		Width = 1;
+		Height = 1;
+	}
+};
+class Overlay : public Occupier
+{
+public:
+	const OverlayType* type;
+	int icon;
+	Overlay() : type(nullptr), icon(0)
+	{
+		static bool mask[1] = { true };
+		OccupyMask = mask;
+		Width = 1;
+		Height = 1;
+	}
+};
+class Smudge : public Overlapper
+{
+public:
+	const SmudgeType* type;
+	int icon;
+	int data;
+	Smudge() : type(nullptr), icon(0), data(0)
+	{
+	}
+};
+class Terrain : public Occupier, public Overlapper
 {
 public:
 	const TerrainType* type;
@@ -455,7 +614,7 @@ public:
 	{
 	}
 };
-class Structure : public Occupier
+class Structure : public Occupier, public Overlapper
 {
 public:
 	const StructType* type;
@@ -467,7 +626,7 @@ public:
 	bool isPrebuilt;
 	bool sellable;
 	bool rebuild;
-	std::vector<int> BibCells;
+	std::set<int> BibCells;
 	Structure() : type(nullptr), strength(0), basePriority(-1), isPrebuilt(true), sellable(false), rebuild(false)
 	{
 	}
@@ -483,19 +642,43 @@ public:
 	HouseType* player;
 	HouseType* baseplayer;
 	CellMetrics* metrics;
-	CellGrid<Template>* templates;
-	CellGrid<Overlay>* overlays;
-	CellGrid<Smudge>* smudges;
+	CellGrid<Template*>* templates;
+	CellGrid<Overlay*>* overlays;
+	CellGrid<Smudge*>* smudges;
 	OccupierSet<Occupier*>* technos;
 	OccupierSet<Occupier*>* buildings;
+	OverlapperSet<Overlapper*> *overlappers;
 	bool isra;
-	int tilesize;
+	int updatecount;
+	bool updating;
+	std::map<MapLayerFlag, std::set<Gdiplus::Point>> invalidatelayers;
+	bool invalidateoverlappers;
 	Map();
 	~Map();
 	void Load(const char* path);
-	void BuildingsOccupierAddedRA(OccupierEventArgs<Occupier*> args);
-	void AddBibRA(Gdiplus::Point location, Structure* s);
-	void BuildingsOccupierAddedTD(OccupierEventArgs<Occupier*> args);
-	void AddBibTD(Gdiplus::Point location, Structure* s);
-	void Render(Gdiplus::Graphics *graphics);
+	void BeginUpdate()
+	{
+		updatecount++;
+	}
+	void EndUpdate()
+	{
+		updatecount--;
+		if (!updatecount)
+		{
+			Update();
+		}
+	}
+	void Update();
+	void UpdateResourceOverlays(std::set<Gdiplus::Point> locations);
+	void UpdateWallOverlays(std::set<Gdiplus::Point> locations);
+	void RemoveBib(Structure* building);
+	void AddBib(Gdiplus::Point location, Structure* s);
+	void SmudgeCellChanged(CellChangedEventArgs<Smudge*> e);
+	void OverlayCellChanged(CellChangedEventArgs<Overlay*> e);
+	void TechnosOccupierAdded(OccupierEventArgs<Occupier*> args);
+	void TechnosOccupierRemoved(OccupierEventArgs<Occupier*> args);
+	void BuildingsOccupierAdded(OccupierEventArgs<Occupier*> args);
+	void BuildingsOccupierRemoved(OccupierEventArgs<Occupier*> args);
+	void Init();
+	void Free();
 };

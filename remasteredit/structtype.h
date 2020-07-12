@@ -1,12 +1,6 @@
 #pragma once
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <shlwapi.h>
-#pragma warning(disable: 4458)
-#include <gdiplus.h>
-#pragma warning(default: 4458)
-#include <string>
-#include <map>
+class HouseType;
+struct DirectionType;
 typedef enum StructTypeTD : char {
 	STRUCTTD_NONE = -1,
 	STRUCTTD_WEAP,
@@ -174,23 +168,24 @@ class StructType
 public:
 	char ID;
 	std::string Name;
-	std::string TileName;
 	std::string TextId;
-	int Width;
-	int Height;
-	bool* BaseOccupyMask;
+	std::string TileName;
+	Gdiplus::Rect OverlapBounds;
 	int OccupyWidth;
 	int OccupyHeight;
 	bool* OccupyMask;
-	bool Bib;
+	int Width;
+	int Height;
+	bool* BaseOccupyMask;
+	Gdiplus::Size Size;
+	bool HasBib;
 	std::string OwnerHouse;
 	unsigned char Theater;
 	bool IsFake;
 	bool HasTurret;
 	std::string FactoryOverlay;
-	Gdiplus::Size Size;
-	Gdiplus::Rect OverlapBounds;
-	StructType(char id, const char* name, const char* textid, int height, int width, bool* baseoccupymask, int occupyheight, int occupywidth, bool* occupymask, bool bib, const char* ownerhouse, unsigned char theater, bool isfake, bool hasturret, const char* factoryoverlay, bool isra) : ID(id), Name(name), TileName(name), TextId(textid), Width(width), Height(height), BaseOccupyMask(baseoccupymask), OccupyWidth(occupywidth), OccupyHeight(occupyheight), OccupyMask(occupymask), Bib(bib), OwnerHouse(ownerhouse), Theater(theater), IsFake(isfake), HasTurret(hasturret), FactoryOverlay(factoryoverlay), Size(Width, Height), OverlapBounds(0, 0, OccupyWidth, OccupyHeight)
+	Gdiplus::Bitmap *Thumbnail;
+	StructType(char id, const char* name, const char* textid, int height, int width, bool* baseoccupymask, int occupyheight, int occupywidth, bool* occupymask, bool hasbib, const char* ownerhouse, unsigned char theater, bool isfake, bool hasturret, const char* factoryoverlay, bool isra) : ID(id), Name(name), TileName(name), TextId(textid), Width(width), Height(height), BaseOccupyMask(baseoccupymask), OccupyWidth(occupywidth), OccupyHeight(occupyheight), OccupyMask(occupymask), HasBib(hasbib), OwnerHouse(ownerhouse), Theater(theater), IsFake(isfake), HasTurret(hasturret), FactoryOverlay(factoryoverlay), Size(Width, Height), OverlapBounds(0, 0, OccupyWidth, OccupyHeight)
 	{
 		if (isfake)
 		{
@@ -205,6 +200,15 @@ public:
 			StructMapTD[Name] = this;
 		}
 	}
+	void Free()
+	{
+		if (Thumbnail)
+		{
+			delete[] Thumbnail;
+			Thumbnail = nullptr;
+		}
+	}
 	static std::map<std::string, StructType*> StructMapTD;
 	static std::map<std::string, StructType*> StructMapRA;
+	void Init(bool isra, HouseType* house, DirectionType direction);
 };

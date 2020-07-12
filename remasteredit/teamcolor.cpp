@@ -1,3 +1,4 @@
+#include "global.h"
 #include "teamcolor.h"
 #include "pugixml.hpp"
 #include "megfilemanager.h"
@@ -19,32 +20,32 @@ void TeamColor::Load(pugi::xml_node& node)
 	pugi::xml_node xmlNode3 = node.select_node("Fudge").node();
 	if (xmlNode3 != nullptr)
 	{
-		Fudge = (float)atof(xmlNode3.child_value());
+		Fudge = static_cast<float>(atof(xmlNode3.child_value()));
 	}
 	pugi::xml_node xmlNode4 = node.select_node("HSVShift").node();
 	if (xmlNode4 != nullptr)
 	{
-		HSVShift = Vector3((float)atof(xmlNode4.select_node("X").node().child_value()), (float)atof(xmlNode4.select_node("Y").node().child_value()), (float)atof(xmlNode4.select_node("Z").node().child_value()));
+		HSVShift = Vector3(static_cast<float>(atof(xmlNode4.select_node("X").node().child_value())), static_cast<float>(atof(xmlNode4.select_node("Y").node().child_value())), static_cast<float>(atof(xmlNode4.select_node("Z").node().child_value())));
 	}
 	pugi::xml_node xmlNode5 = node.select_node("InputLevels").node();
 	if (xmlNode5 != nullptr)
 	{
-		InputLevels = Vector3((float)atof(xmlNode5.select_node("X").node().child_value()), (float)atof(xmlNode5.select_node("Y").node().child_value()), (float)atof(xmlNode5.select_node("Z").node().child_value()));
+		InputLevels = Vector3(static_cast<float>(atof(xmlNode5.select_node("X").node().child_value())), static_cast<float>(atof(xmlNode5.select_node("Y").node().child_value())), static_cast<float>(atof(xmlNode5.select_node("Z").node().child_value())));
 	}
 	pugi::xml_node xmlNode6 = node.select_node("OutputLevels").node();
 	if (xmlNode6 != nullptr)
 	{
-		OutputLevels = Vector2((float)atof(xmlNode6.select_node("X").node().child_value()), (float)atof(xmlNode6.select_node("Y").node().child_value()));
+		OutputLevels = Vector2(static_cast<float>(atof(xmlNode6.select_node("X").node().child_value())), static_cast<float>(atof(xmlNode6.select_node("Y").node().child_value())));
 	}
 	pugi::xml_node xmlNode7 = node.select_node("OverallInputLevels").node();
 	if (xmlNode7 != nullptr)
 	{
-		OverallInputLevels = Vector3((float)atof(xmlNode7.select_node("X").node().child_value()), (float)atof(xmlNode7.select_node("Y").node().child_value()), (float)atof(xmlNode7.select_node("Z").node().child_value()));
+		OverallInputLevels = Vector3(static_cast<float>(atof(xmlNode7.select_node("X").node().child_value())), static_cast<float>(atof(xmlNode7.select_node("Y").node().child_value())), static_cast<float>(atof(xmlNode7.select_node("Z").node().child_value())));
 	}
 	pugi::xml_node xmlNode8 = node.select_node("OverallOutputLevels").node();
 	if (xmlNode6 != nullptr)
 	{
-		OverallOutputLevels = Vector2((float)atof(xmlNode8.select_node("X").node().child_value()), (float)atof(xmlNode8.select_node("Y").node().child_value()));
+		OverallOutputLevels = Vector2(static_cast<float>(atof(xmlNode8.select_node("X").node().child_value())), static_cast<float>(atof(xmlNode8.select_node("Y").node().child_value())));
 	}
 }
 TeamColor* TeamColorManager::GetColor(const char* color)

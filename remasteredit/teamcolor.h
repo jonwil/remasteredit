@@ -1,12 +1,4 @@
 #pragma once
-#include <map>
-#include <string>
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <shlwapi.h>
-#pragma warning(disable: 4458)
-#include <gdiplus.h>
-#pragma warning(default: 4458)
 namespace pugi
 {
     class xml_node;

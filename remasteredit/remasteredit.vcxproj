@@ -106,7 +106,10 @@
     <ClCompile Include="..\utils\XPIPE.CPP" />
     <ClCompile Include="..\utils\XSTRAW.CPP" />
     <ClCompile Include="housetype.cpp" />
+    <ClCompile Include="mainwindow.cpp" />
     <ClCompile Include="map.cpp" />
+    <ClCompile Include="mappanel.cpp" />
+    <ClCompile Include="maprender.cpp" />
     <ClCompile Include="miniz.c" />
     <ClCompile Include="OverlayType.cpp" />
     <ClCompile Include="pugixml.cpp" />
@@ -119,13 +122,18 @@
     <ClCompile Include="TerrainType.cpp" />
     <ClCompile Include="texman.cpp" />
     <ClCompile Include="tileset.cpp" />
+    <ClCompile Include="window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AircraftType.h" />
     <ClInclude Include="cellmetrics.h" />
+    <ClInclude Include="global.h" />
     <ClInclude Include="housetype.h" />
     <ClInclude Include="infantrytype.h" />
+    <ClInclude Include="mainwindow.h" />
     <ClInclude Include="map.h" />
+    <ClInclude Include="mappanel.h" />
+    <ClInclude Include="maprender.h" />
     <ClInclude Include="overlaytype.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="smudgetype.h" />
@@ -138,6 +146,7 @@
     <ClInclude Include="tileset.h" />
     <ClInclude Include="unittype.h" />
     <ClInclude Include="vesseltype.h" />
+    <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="remasteredit.rc" />

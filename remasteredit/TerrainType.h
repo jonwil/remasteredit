@@ -1,6 +1,4 @@
 #pragma once
-#include <string>
-#include <map>
 typedef enum TerrainTypeTD : char {
 	TERRAINTD_NONE = -1,
 	TERRAINTD_TREE1,
@@ -83,13 +81,15 @@ class TerrainType
 public:
 	char ID;
 	std::string Name;
+	Gdiplus::Rect OverlapBounds;
+	bool* OccupyMask;
+	Gdiplus::Size Size;
 	unsigned char Theater;
 	bool IsTransformable;
 	bool IsMine;
-	int Width;
-	int Height;
-	bool* OccupyMask;
-	TerrainType(char id, const char* name, unsigned char theater, bool istransformable, bool ismine, int height, int width, bool* occupymask, bool isra) : ID(id), Name(name), Theater(theater), IsTransformable(istransformable), IsMine(ismine), Width(width), Height(height), OccupyMask(occupymask)
+	Gdiplus::Size RenderSize;
+	Gdiplus::Bitmap* Thumbnail;
+	TerrainType(char id, const char* name, unsigned char theater, bool istransformable, bool ismine, Gdiplus::Size size, bool* occupymask, bool isra) : ID(id), Name(name), Theater(theater), IsTransformable(istransformable), IsMine(ismine), Size(size), OccupyMask(occupymask), Thumbnail(nullptr)
 	{
 		if (isra)
 		{
@@ -100,6 +100,15 @@ public:
 			TerrainMapTD[name] = this;
 		}
 	}
+	void Free()
+	{
+		if (Thumbnail)
+		{
+			delete Thumbnail;
+			Thumbnail = nullptr;
+		}
+	}
 	static std::map<std::string, TerrainType*> TerrainMapTD;
 	static std::map<std::string, TerrainType*> TerrainMapRA;
+	void Init();
 };

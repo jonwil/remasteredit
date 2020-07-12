@@ -1,10 +1,4 @@
 #pragma once
-#include <map>
-#include <string>
-#include <Shlwapi.h>
-#pragma warning(disable: 4458)
-#include <gdiplus.h>
-#pragma warning(default: 4458)
 class MegFileManager;
 class TeamColor;
 class TextureManager

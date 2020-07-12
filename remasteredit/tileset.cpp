@@ -1,10 +1,5 @@
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <Shlwapi.h>
+#include "global.h"
 #include <algorithm>
-#pragma warning(disable: 4458)
-#include <gdiplus.h>
-#pragma warning(default: 4458)
 #include "pugixml.hpp"
 #include "wwfile.h"
 #include "tileset.h"

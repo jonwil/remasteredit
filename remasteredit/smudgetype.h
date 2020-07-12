@@ -1,12 +1,4 @@
 #pragma once
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <shlwapi.h>
-#pragma warning(disable: 4458)
-#include <gdiplus.h>
-#pragma warning(default: 4458)
-#include <string>
-#include <map>
 typedef enum SmudgeTypeFlag : char {
 	SMUDGETYPE_NONE = 0x0,
 	SMUDGETYPE_BIB = 0x1,
@@ -59,11 +51,12 @@ class SmudgeType
 public:
 	char ID;
 	std::string Name;
-	int Width;
-	int Height;
-	SmudgeTypeFlag Flag;
+	Gdiplus::Rect OverlapBounds;
 	Gdiplus::Size Size;
-	SmudgeType(char id, const char* name, int width, int height, SmudgeTypeFlag flag, bool isra = false) : ID(id), Name(name), Width(width), Height(height), Flag(flag), Size(Width, Height)
+	SmudgeTypeFlag Flag;
+	Gdiplus::Size RenderSize;
+	Gdiplus::Bitmap* Thumbnail;
+	SmudgeType(char id, const char* name, Gdiplus::Size size, SmudgeTypeFlag flag, bool isra = false) : ID(id), Name(name), Flag(flag), Size(size), Thumbnail(nullptr)
 	{
 		if (isra)
 		{
@@ -74,6 +67,15 @@ public:
 			SmudgeMapTD[name] = this;
 		}
 	}
+	void Free()
+	{
+		if (Thumbnail)
+		{
+			delete Thumbnail;
+			Thumbnail = nullptr;
+		}
+	}
 	static std::map<std::string, SmudgeType*> SmudgeMapTD;
 	static std::map<std::string, SmudgeType*> SmudgeMapRA;
+	void Init();
 };

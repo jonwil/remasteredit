@@ -1,11 +1,4 @@
 #pragma once
-#include <map>
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <shlwapi.h>
-#pragma warning(disable: 4458)
-#include <gdiplus.h>
-#pragma warning(default: 4458)
 template <class Key, class Value, class Compare, class Allocator> bool TryGetValue(std::map<Key, Value, Compare, Allocator> const& theMap, typename std::map<Key, Value, Compare, Allocator>::key_type const& key, typename std::map<Key, Value, Compare, Allocator>::mapped_type& value)
 {
 	auto it = theMap.find(key);

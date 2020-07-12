@@ -1,3 +1,5 @@
+#include "global.h"
+#include "global.h"
 #include "cellmetrics.h"
 #include "map.h"
 #include "tileset.h"
@@ -10,11 +12,12 @@
 #include "RAWFILE.H"
 #include "XSTRAW.H"
 #include "LCWSTRAW.H"
-#include <Shlwapi.h>
 #include <time.h>
 #include "boolinq.h"
 #include "housetype.h"
 #include "teamcolor.h"
+#include "maprender.h"
+#include "mappanel.h"
 char _staging_buffer[32000];
 std::map<std::string, const char**> TDTheaters;
 std::map<std::string, const char**> RATheaters;
@@ -34,8 +37,6 @@ const char* RAInterior[5] = { "RA_Units", "RA_Structures", "RA_VFX", "Common_VFX
 #define	TD_MAP_CELL_TOTAL			(TD_MAP_CELL_W*TD_MAP_CELL_H)
 std::map<std::string, int> TDTheaterIDs;
 std::map<std::string, int> RATheaterIDs;
-static int tilescale = 2;
-static int tilesize = 128 / tilescale;
 const FacingType CellMetrics::AdjacentFacings[8] = { FACING_NORTH, FACING_NORTHEAST, FACING_EAST, FACING_SOUTHEAST, FACING_SOUTH, FACING_SOUTHWEST, FACING_WEST, FACING_NORTHWEST };
 DirectionType DirectionType::Types[16] = {
 	{0, "North", FACING_NORTH},
@@ -55,9 +56,8 @@ DirectionType DirectionType::Types[16] = {
 	{224, "NorthWest", FACING_NORTHWEST},
 	{240, "North-NorthWest", FACING_NONE}
 };
-Map::Map() : width(0), height(0), size(0), templates(nullptr), overlays(nullptr), smudges(nullptr), technos(nullptr), buildings(nullptr), isra(false), theaterid(0), metrics(nullptr)
+Map::Map() : width(0), height(0), size(0), templates(nullptr), overlays(nullptr), smudges(nullptr), technos(nullptr), buildings(nullptr), isra(false), theaterid(0), metrics(nullptr), updatecount(0), updating(false), invalidateoverlappers(false), baseplayer(nullptr), player(nullptr), overlappers(nullptr)
 {
-	tilesize = 128 / tilescale;
 	TDTheaters["desert"] = TDDesert;
 	TDTheaters["temperate"] = TDTemperate;
 	TDTheaters["winter"] = TDWinter;
@@ -74,21 +74,29 @@ Map::Map() : width(0), height(0), size(0), templates(nullptr), overlays(nullptr)
 
 Map::~Map()
 {
+	Free();
 	delete metrics;
 	delete templates;
 	delete overlays;
 	delete smudges;
 	delete technos;
+	buildings->ClearOccupiers();
 	delete buildings;
+	delete overlappers;
 }
 
-void Map::AddBibRA(Gdiplus::Point location, Structure* s)
+void Map::AddBib(Gdiplus::Point location, Structure* s)
 {
-	if (s->type->Bib)
+	auto smudgemap = SmudgeType::SmudgeMapTD;
+	if (isra)
 	{
-		SmudgeType* smudgeType = from(SmudgeType::SmudgeMapRA).where([](std::pair<std::string, SmudgeType*> t) {return t.second->Flag == SMUDGETYPE_BIB1; }).firstOrDefault().second;
-		SmudgeType* smudgeType2 = from(SmudgeType::SmudgeMapRA).where([](std::pair<std::string, SmudgeType*> t) {return t.second->Flag == SMUDGETYPE_BIB2; }).firstOrDefault().second;
-		SmudgeType* smudgeType3 = from(SmudgeType::SmudgeMapRA).where([](std::pair<std::string, SmudgeType*> t) {return t.second->Flag == SMUDGETYPE_BIB3; }).firstOrDefault().second;
+		smudgemap = SmudgeType::SmudgeMapRA;
+	}
+	if (s->type->HasBib)
+	{
+		SmudgeType* smudgeType = from(smudgemap).where([](std::pair<std::string, SmudgeType*> t) {return t.second->Flag == SMUDGETYPE_BIB1; }).firstOrDefault().second;
+		SmudgeType* smudgeType2 = from(smudgemap).where([](std::pair<std::string, SmudgeType*> t) {return t.second->Flag == SMUDGETYPE_BIB2; }).firstOrDefault().second;
+		SmudgeType* smudgeType3 = from(smudgemap).where([](std::pair<std::string, SmudgeType*> t) {return t.second->Flag == SMUDGETYPE_BIB3; }).firstOrDefault().second;
 		SmudgeType* smudgeType4 = nullptr;
 		switch (s->type->Size.Width)
 		{
@@ -115,12 +123,13 @@ void Map::AddBibRA(Gdiplus::Point location, Structure* s)
 				int cell;
 				if (metrics->GetCell(Gdiplus::Point(location.X + num2, location.Y + s->type->Size.Height + i - 1), cell))
 				{
-					Smudge sm;
-					sm.type = smudgeType4;
-					sm.data = 0;
-					sm.icon = num;
+					Smudge* sm = new Smudge;
+					sm->type = smudgeType4;
+					sm->data = 0;
+					sm->icon = num;
+					sm->OverlapBounds = sm->type->OverlapBounds;
 					smudges->Set(cell, sm);
-					s->BibCells.push_back(cell);
+					s->BibCells.insert(cell);
 				}
 				num2++;
 				num++;
@@ -129,73 +138,23 @@ void Map::AddBibRA(Gdiplus::Point location, Structure* s)
 	}
 }
 
-void Map::AddBibTD(Gdiplus::Point location, Structure* s)
-{
-	if (s->type->Bib)
-	{
-		SmudgeType* smudgeType = from(SmudgeType::SmudgeMapTD).where([](std::pair<std::string, SmudgeType*> t) {return t.second->Flag == SMUDGETYPE_BIB1; }).firstOrDefault().second;
-		SmudgeType* smudgeType2 = from(SmudgeType::SmudgeMapTD).where([](std::pair<std::string, SmudgeType*> t) {return t.second->Flag == SMUDGETYPE_BIB2; }).firstOrDefault().second;
-		SmudgeType* smudgeType3 = from(SmudgeType::SmudgeMapTD).where([](std::pair<std::string, SmudgeType*> t) {return t.second->Flag == SMUDGETYPE_BIB3; }).firstOrDefault().second;
-		SmudgeType* smudgeType4 = nullptr;
-		switch (s->type->Size.Width)
-		{
-		case 2:
-			smudgeType4 = smudgeType3;
-			break;
-		case 3:
-			smudgeType4 = smudgeType2;
-			break;
-		case 4:
-			smudgeType4 = smudgeType;
-			break;
-		}
-		if (smudgeType4 == nullptr)
-		{
-			return;
-		}
-		int num = 0;
-		for (int i = 0; i < smudgeType4->Size.Height; i++)
-		{
-			int num2 = 0;
-			while (num2 < smudgeType4->Size.Width)
-			{
-				int cell;
-				if (metrics->GetCell(Gdiplus::Point(location.X + num2, location.Y + s->type->Size.Height + i - 1), cell))
-				{
-					Smudge sm;
-					sm.type = smudgeType4;
-					sm.data = 0;
-					sm.icon = num;
-					smudges->Set(cell, sm);
-					s->BibCells.push_back(cell);
-				}
-				num2++;
-				num++;
-			}
-		}
-	}
-}
-
-void Map::BuildingsOccupierAddedRA(OccupierEventArgs<Occupier*> args)
+void Map::BuildingsOccupierAdded(OccupierEventArgs<Occupier*> args)
 {
 	if (typeid(*args.Occupier) == typeid(Structure))
 	{
 		Structure* s = dynamic_cast<Structure*>(args.Occupier);
-		AddBibRA(args.Location, s);
+		technos->Add(args.Location, args.Occupier, s->type->BaseOccupyMask, s->type->Width, s->type->Height);
+		AddBib(args.Location, s);
 	}
-}
-
-void Map::BuildingsOccupierAddedTD(OccupierEventArgs<Occupier*> args)
-{
-	if (typeid(*args.Occupier) == typeid(Structure))
+	else
 	{
-		Structure* s = dynamic_cast<Structure*>(args.Occupier);
-		AddBibTD(args.Location, s);
+		technos->Add(args.Location, args.Occupier);
 	}
 }
 
 void Map::Load(const char* path)
 {
+	BeginUpdate();
 	srand((unsigned int)time(nullptr) + GetCurrentProcessId());
 	RawFileClass f(path);
 	f.Open();
@@ -213,6 +172,45 @@ void Map::Load(const char* path)
 	if (isra)
 	{
 		metrics = new CellMetrics(RA_MAP_CELL_W, RA_MAP_CELL_H);
+		if (overlappers)
+		{
+			delete overlappers;
+		}
+		overlappers = new OverlapperSet<Overlapper*>(metrics);
+		if (templates)
+		{
+			delete templates;
+		}
+		templates = new CellGrid<Template*>(metrics, this);
+		if (overlays)
+		{
+			delete overlays;
+		}
+		overlays = new CellGrid<Overlay*>(metrics, this);
+		overlays->OnCellChanged = &Map::OverlayCellChanged;
+		if (smudges)
+		{
+			delete smudges;
+		}
+		smudges = new CellGrid<Smudge*>(metrics, this);
+		smudges->OnCellChanged = &Map::SmudgeCellChanged;
+		if (technos)
+		{
+			delete technos;
+		}
+		technos = new OccupierSet<Occupier*>(metrics);
+		technos->map = this;
+		technos->OnOccupierAdded = &Map::TechnosOccupierAdded;
+		technos->OnOccupierRemoved = &Map::TechnosOccupierRemoved;
+		if (buildings)
+		{
+			buildings->ClearOccupiers();
+			delete buildings;
+		}
+		buildings = new OccupierSet<Occupier*>(metrics);
+		buildings->map = this;
+		buildings->OnOccupierAdded = &Map::BuildingsOccupierAdded;
+		buildings->OnOccupierRemoved = &Map::BuildingsOccupierRemoved;
 		char th[9];
 		ini.Get_String("Map", "Theater", "", th, 9);
 		_strlwr(th);
@@ -234,11 +232,10 @@ void Map::Load(const char* path)
 		width = RA_MAP_CELL_W;
 		height = RA_MAP_CELL_H;
 		size = RA_MAP_CELL_TOTAL;
-		if (templates)
-		{
-			delete templates;
-		}
-		templates = new CellGrid<Template>(metrics);
+		MapPanel::panel->data = new BYTE[TileWidth * width * TileHeight * height * 4];
+		MapPanel::panel->mapImage = new Gdiplus::Bitmap(TileWidth * width, TileHeight * height, TileWidth * width * 4, PixelFormat32bppARGB, MapPanel::panel->data);
+		Free();
+		Init();
 		int clen = ini.Get_UUBlock("MapPack", _staging_buffer, sizeof(_staging_buffer));
 		BufferStraw cbstraw(_staging_buffer, clen);
 		LCWStraw cdecomp(LCWStraw::DECOMPRESS);
@@ -256,8 +253,8 @@ void Map::Load(const char* path)
 			{
 				if (t->Theater & theaterid)
 				{
-					Template tx;
-					tx.type = t;
+					Template* tx = new Template;
+					tx->type = t;
 					templates->Set(i,tx);
 				}
 			}
@@ -266,26 +263,19 @@ void Map::Load(const char* path)
 		{
 			unsigned char b;
 			cdecomp.Get(&b, sizeof(b));
-			if (templates->Get(i).type)
+			if (templates->Get(i) && templates->Get(i)->type)
 			{
-				if (templates->Get(i).type->ID != TEMPLATERA_CLEAR1 && b >= templates->Get(i).type->IconWidth * templates->Get(i).type->IconHeight)
+				if (templates->Get(i)->type->ID != TEMPLATERA_CLEAR1 && b >= templates->Get(i)->type->IconWidth * templates->Get(i)->type->IconHeight)
 				{
-					Template tx;
-					templates->Set(i,tx);
+					templates->Set(i,nullptr);
 				}
 				else
 				{
-					Template tx = templates->Get(i);
-					tx.icon = b;
-					templates->Set(i,tx);
+					Template* tx = templates->Get(i);
+					tx->icon = b;
 				}
 			}
 		}
-		if (overlays)
-		{
-			delete[] overlays;
-		}
-		overlays = new CellGrid<Overlay>(metrics);
 		int olen = ini.Get_UUBlock("OverlayPack", _staging_buffer, sizeof(_staging_buffer));
 		BufferStraw obstraw(_staging_buffer, olen);
 		LCWStraw odecomp(LCWStraw::DECOMPRESS);
@@ -303,20 +293,15 @@ void Map::Load(const char* path)
 			{
 				if (o->Theater & theaterid)
 				{
-					Overlay ox;
-					ox.type = o;
-					ox.OccupyMask = o->OccupyMask;
-					ox.Width = o->Width;
-					ox.Height = o->Height;
+					Overlay* ox = new Overlay;
+					ox->type = o;
+					ox->OccupyMask = o->OccupyMask;
+					ox->Width = o->Width;
+					ox->Height = o->Height;
 					overlays->Set(i,ox);
 				}
 			}
 		}
-		if (smudges)
-		{
-			delete[] smudges;
-		}
-		smudges = new CellGrid<Smudge>(metrics);
 		for (int i = 0; i < ini.Entry_Count("Smudge"); i++)
 		{
 			const char* cell = ini.Get_Entry("Smudge", i);
@@ -327,17 +312,13 @@ void Map::Load(const char* path)
 			int data = atoi(strtok(nullptr, ","));
 			if (SmudgeType::SmudgeMapRA.count(name))
 			{
-				Smudge s;
-				s.type = SmudgeType::SmudgeMapRA[name];
-				s.data = data;
-				smudges->Set(cellid,s);
+				Smudge* s = new Smudge;
+				s->type = SmudgeType::SmudgeMapRA[name];
+				s->data = data;
+				s->OverlapBounds = s->type->OverlapBounds;
+				smudges->Set(cellid, s);
 			}
 		}
-		if (technos)
-		{
-			delete[] technos;
-		}
-		technos = new OccupierSet<Occupier *>(metrics);
 		for (int i = 0; i < ini.Entry_Count("TERRAIN"); i++)
 		{
 			const char* cell = ini.Get_Entry("TERRAIN", i);
@@ -350,19 +331,13 @@ void Map::Load(const char* path)
 				Terrain *t = new Terrain;
 				t->type = TerrainType::TerrainMapRA[terrain];
 				t->OccupyMask = t->type->OccupyMask;
-				t->Width = t->type->Width;
-				t->Height = t->type->Height;
+				t->Width = t->type->Size.Width;
+				t->Height = t->type->Size.Height;
 				t->trigger = _strdup("");
+				t->OverlapBounds = t->type->OverlapBounds;
 				technos->Add(cellid, t);
 			}
 		}
-		if (buildings)
-		{
-			delete[] buildings;
-		}
-		buildings = new OccupierSet<Occupier*>(metrics);
-		buildings->map = this;
-		buildings->OnOccupierAdded = &Map::BuildingsOccupierAddedRA;
 		for (int i = 0; i < ini.Entry_Count("STRUCTURES"); i++)
 		{
 			const char* cell = ini.Get_Entry("STRUCTURES", i);
@@ -390,6 +365,7 @@ void Map::Load(const char* path)
 				s->trigger = trigger;
 				s->sellable = sellable;
 				s->rebuild = rebuild;
+				s->OverlapBounds = s->type->OverlapBounds;
 				buildings->Add(cellid, s);
 			}
 		}
@@ -409,7 +385,7 @@ void Map::Load(const char* path)
 				{
 					Gdiplus::Point location;
 					metrics->GetLocation(cellid, location);
-					Structure* s = (Structure*)from(buildings->GetOccupiers(typeid(Structure))).where([location](std::pair<Occupier *, Gdiplus::Point> x) {return x.second.Equals(location); }).firstOrDefault().first;
+					Structure* s = dynamic_cast<Structure*>(from(buildings->GetOccupiers(typeid(Structure))).where([location](std::pair<Occupier*, Gdiplus::Point> x) {return x.second.Equals(location); }).firstOrDefault().first);
 					if (s)
 					{
 						s->basePriority = priority;
@@ -426,6 +402,7 @@ void Map::Load(const char* path)
 						s2->Height = s2->type->Height;
 						s2->isPrebuilt = false;
 						s2->house = baseplayer;
+						s2->OverlapBounds = s2->type->OverlapBounds;
 						buildings->Add(cellid, s2);
 					}
 				}
@@ -439,6 +416,45 @@ void Map::Load(const char* path)
 	else
 	{
 		metrics = new CellMetrics(TD_MAP_CELL_W, TD_MAP_CELL_H);
+		if (overlappers)
+		{
+			delete overlappers;
+		}
+		overlappers = new OverlapperSet<Overlapper*>(metrics);
+		if (templates)
+		{
+			delete templates;
+		}
+		templates = new CellGrid<Template*>(metrics, this);
+		if (overlays)
+		{
+			delete overlays;
+		}
+		overlays = new CellGrid<Overlay*>(metrics, this);
+		overlays->OnCellChanged = &Map::OverlayCellChanged;
+		if (smudges)
+		{
+			delete smudges;
+		}
+		smudges = new CellGrid<Smudge*>(metrics, this);
+		smudges->OnCellChanged = &Map::SmudgeCellChanged;
+		if (technos)
+		{
+			delete technos;
+		}
+		technos = new OccupierSet<Occupier*>(metrics);
+		technos->map = this;
+		technos->OnOccupierAdded = &Map::TechnosOccupierAdded;
+		technos->OnOccupierRemoved = &Map::TechnosOccupierRemoved;
+		if (buildings)
+		{
+			buildings->ClearOccupiers();
+			delete buildings;
+		}
+		buildings = new OccupierSet<Occupier*>(metrics);
+		buildings->map = this;
+		buildings->OnOccupierAdded = &Map::BuildingsOccupierAdded;
+		buildings->OnOccupierRemoved = &Map::BuildingsOccupierRemoved;
 		char th[9];
 		ini.Get_String("Map", "Theater", "", th, 9);
 		theater = th;
@@ -460,11 +476,10 @@ void Map::Load(const char* path)
 		width = TD_MAP_CELL_W;
 		height = TD_MAP_CELL_H;
 		size = TD_MAP_CELL_TOTAL;
-		if (templates)
-		{
-			delete templates;
-		}
-		templates = new CellGrid<Template>(metrics);
+		MapPanel::panel->data = new BYTE[TileWidth * width * TileHeight * height * 4];
+		MapPanel::panel->mapImage = new Gdiplus::Bitmap(TileWidth * width, TileHeight * height, TileWidth * width * 4, PixelFormat32bppARGB, MapPanel::panel->data);
+		Free();
+		Init();
 		for (int i = 0; i < TD_MAP_CELL_TOTAL; i++)
 		{
 			unsigned char tile;
@@ -480,18 +495,13 @@ void Map::Load(const char* path)
 			{
 				if (t->Theater & theaterid)
 				{
-					Template tx;
-					tx.type = t;
-					tx.icon = icon;
+					Template* tx = new Template;
+					tx->type = t;
+					tx->icon = icon;
 					templates->Set(i, tx);
 				}
 			}
 		}
-		if (overlays)
-		{
-			delete[] overlays;
-		}
-		overlays = new CellGrid<Overlay>(metrics);
 		for (int i = 0; i < ini.Entry_Count("Overlay"); i++)
 		{
 			const char* cell = ini.Get_Entry("Overlay", i);
@@ -500,19 +510,14 @@ void Map::Load(const char* path)
 			ini.Get_String("Overlay", cell, nullptr, overlay, 9);
 			if (OverlayType::OverlayMapTD.count(overlay))
 			{
-				Overlay ox;
-				ox.type = OverlayType::OverlayMapTD[overlay];
-				ox.OccupyMask = ox.type->OccupyMask;
-				ox.Width = ox.type->Width;
-				ox.Height = ox.type->Height;
+				Overlay* ox = new Overlay;
+				ox->type = OverlayType::OverlayMapTD[overlay];
+				ox->OccupyMask = ox->type->OccupyMask;
+				ox->Width = ox->type->Width;
+				ox->Height = ox->type->Height;
 				overlays->Set(cellid, ox);
 			}
 		}
-		if (smudges)
-		{
-			delete[] smudges;
-		}
-		smudges = new CellGrid<Smudge>(metrics);
 		for (int i = 0; i < ini.Entry_Count("Smudge"); i++)
 		{
 			const char* cell = ini.Get_Entry("Smudge", i);
@@ -523,17 +528,13 @@ void Map::Load(const char* path)
 			int data = atoi(strtok(nullptr, ","));
 			if (SmudgeType::SmudgeMapTD.count(name))
 			{
-				Smudge s;
-				s.type = SmudgeType::SmudgeMapRA[name];
-				s.data = data;
+				Smudge* s = new Smudge;
+				s->type = SmudgeType::SmudgeMapRA[name];
+				s->data = data;
+				s->OverlapBounds = s->type->OverlapBounds;
 				smudges->Set(cellid, s);
 			}
 		}
-		if (technos)
-		{
-			delete[] technos;
-		}
-		technos = new OccupierSet<Occupier *>(metrics);
 		for (int i = 0; i < ini.Entry_Count("Terrain"); i++)
 		{
 			const char* cell = ini.Get_Entry("Terrain", i);
@@ -548,22 +549,16 @@ void Map::Load(const char* path)
 				t->type = TerrainType::TerrainMapTD[name];
 				t->trigger = _strdup(trigger);
 				t->OccupyMask = t->type->OccupyMask;
-				t->Width = t->type->Width;
-				t->Height = t->type->Height;
+				t->Width = t->type->Size.Width;
+				t->Height = t->type->Size.Height;
 				if (t->type->IsTransformable)
 				{
 					t->icon = 22;
 				}
+				t->OverlapBounds = t->type->OverlapBounds;
 				technos->Add(cellid, t);
 			}
 		}
-		if (buildings)
-		{
-			delete[] buildings;
-		}
-		buildings = new OccupierSet<Occupier*>(metrics);
-		buildings->map = this;
-		buildings->OnOccupierAdded = &Map::BuildingsOccupierAddedTD;
 		for (int i = 0; i < ini.Entry_Count("Structures"); i++)
 		{
 			const char* cell = ini.Get_Entry("Structures", i);
@@ -587,6 +582,7 @@ void Map::Load(const char* path)
 				s->strength = strength;
 				s->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
 				s->trigger = trigger;
+				s->OverlapBounds = s->type->OverlapBounds;
 				buildings->Add(cellid, s);
 			}
 		}
@@ -605,7 +601,7 @@ void Map::Load(const char* path)
 				if (type)
 				{
 					Gdiplus::Point location = Gdiplus::Point((cellid >> 8) & 0x3F, (cellid >> 24) & 0x3F);
-					Structure* s = (Structure*)from(buildings->GetOccupiers(typeid(Structure))).where([location](std::pair<Occupier*, Gdiplus::Point> x) {return x.second.Equals(location); }).firstOrDefault().first;
+					Structure* s = dynamic_cast<Structure*>(from(buildings->GetOccupiers(typeid(Structure))).where([location](std::pair<Occupier*, Gdiplus::Point> x) {return x.second.Equals(location); }).firstOrDefault().first);
 					if (s)
 					{
 						s->basePriority = priority;
@@ -622,12 +618,54 @@ void Map::Load(const char* path)
 						s2->Height = s2->type->Height;
 						s2->isPrebuilt = false;
 						s2->house = baseplayer;
+						s2->OverlapBounds = s2->type->OverlapBounds;
 						buildings->Add(cellid, s2);
 					}
 				}
 			}
 		}
 	}
+	EndUpdate();
+}
+
+void Map::Update()
+{
+	updating = true;
+	std::set<Gdiplus::Point> value;
+	if (TryGetValue(invalidatelayers, MAPLAYER_RESOURCES, value))
+	{
+		UpdateResourceOverlays(value);
+	}
+	if (TryGetValue(invalidatelayers, MAPLAYER_RESOURCES, value))
+	{
+		UpdateWallOverlays(value);
+	}
+	if (invalidateoverlappers)
+	{
+		overlappers->Clear();
+		for (int i = 0; i < metrics->Length; i++)
+		{
+			Smudge* s = smudges->Get(i);
+			if (s)
+			{
+				overlappers->Add(i, s);
+			}
+		}
+		for (auto techno : *technos)
+		{
+			if (typeid(*techno.first) == typeid(Overlapper))
+			{
+				overlappers->Add(techno.second, dynamic_cast<Overlapper *>(techno.first));
+			}
+		}
+	}
+	invalidatelayers.clear();
+	invalidateoverlappers = false;
+	updating = false;
+}
+
+void Map::UpdateResourceOverlays(std::set<Gdiplus::Point> locations)
+{
 	static int icons1[9] = { 0, 1, 3, 4, 6, 7, 8, 10, 11 };
 	static int icons2[9] = { 0, 0, 0, 1, 1, 1, 2, 2, 2 };
 	for (int y = 0; y < height; y++)
@@ -635,54 +673,28 @@ void Map::Load(const char* path)
 		for (int x = 0; x < width; x++)
 		{
 			int cell = (y * width) + x;
-			Overlay o = overlays->Get(cell);
-			if (o.type)
+			Overlay* o = overlays->Get(cell);
+			if (o)
 			{
-				if (o.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || o.type->Flag == OVERLAYTYPE_GEMS)
+				if (o->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || o->type->Flag == OVERLAYTYPE_GEMS)
 				{
 					int count = 0;
 					for (auto i : metrics->AdjacentFacings)
 					{
-						Overlay ao = overlays->Adjacent(cell, i);
-						if (ao.type && (ao.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || ao.type->Flag == OVERLAYTYPE_GEMS))
+						Overlay* ao = overlays->Adjacent(cell, i);
+						if (ao && (ao->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || ao->type->Flag == OVERLAYTYPE_GEMS))
 						{
 							count++;
 						}
 					}
-					if (o.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD)
+					if (o->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD)
 					{
-						o.icon = icons1[count];
+						o->icon = icons1[count];
 					}
 					else
 					{
-						o.icon = icons2[count];
+						o->icon = icons2[count];
 					}
-					overlays->Set(cell, o);
-				}
-				if (o.type->Flag == OVERLAYTYPE_WALL)
-				{
-					Overlay north = overlays->Adjacent(cell, FACING_NORTH);
-					Overlay east = overlays->Adjacent(cell, FACING_EAST);
-					Overlay south = overlays->Adjacent(cell, FACING_SOUTH);
-					Overlay west = overlays->Adjacent(cell, FACING_WEST);
-					int count = 0;
-					if (north.type == o.type)
-					{
-						count |= 1;
-					}
-					if (east.type == o.type)
-					{
-						count |= 2;
-					}
-					if (south.type == o.type)
-					{
-						count |= 4;
-					}
-					if (west.type == o.type)
-					{
-						count |= 8;
-					}
-					o.icon = count;
 					overlays->Set(cell, o);
 				}
 			}
@@ -690,908 +702,276 @@ void Map::Load(const char* path)
 	}
 }
 
-void Map::Render(Gdiplus::Graphics *graphics)
+void Map::UpdateWallOverlays(std::set<Gdiplus::Point> locations)
 {
-	static int Facing16[256] =
+	for (int y = 0; y < height; y++)
 	{
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0
-	};
-	static int Facing32[256] =
-	{
-		0,
-		0,
-		0,
-		0,
-		0,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		1,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		2,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		3,
-		4,
-		4,
-		4,
-		4,
-		4,
-		4,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		5,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		6,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		7,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		8,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		9,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		10,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		11,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		12,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		13,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		14,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		15,
-		16,
-		16,
-		16,
-		16,
-		16,
-		16,
-		16,
-		16,
-		16,
-		16,
-		16,
-		17,
-		17,
-		17,
-		17,
-		17,
-		17,
-		17,
-		17,
-		17,
-		18,
-		18,
-		18,
-		18,
-		18,
-		18,
-		18,
-		18,
-		18,
-		19,
-		19,
-		19,
-		19,
-		19,
-		19,
-		19,
-		19,
-		19,
-		19,
-		20,
-		20,
-		20,
-		20,
-		20,
-		20,
-		21,
-		21,
-		21,
-		21,
-		21,
-		21,
-		21,
-		22,
-		22,
-		22,
-		22,
-		22,
-		22,
-		22,
-		23,
-		23,
-		23,
-		23,
-		23,
-		23,
-		23,
-		24,
-		24,
-		24,
-		24,
-		24,
-		24,
-		24,
-		25,
-		25,
-		25,
-		25,
-		25,
-		25,
-		25,
-		26,
-		26,
-		26,
-		26,
-		26,
-		26,
-		26,
-		27,
-		27,
-		27,
-		27,
-		27,
-		27,
-		27,
-		28,
-		28,
-		28,
-		28,
-		28,
-		28,
-		28,
-		28,
-		29,
-		29,
-		29,
-		29,
-		29,
-		29,
-		29,
-		29,
-		30,
-		30,
-		30,
-		30,
-		30,
-		30,
-		30,
-		30,
-		30,
-		31,
-		31,
-		31,
-		31,
-		31,
-		31,
-		31,
-		31,
-		31,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0
-	};
-	static int HumanShape[32] =
-	{
-		0,
-		0,
-		7,
-		7,
-		7,
-		7,
-		6,
-		6,
-		6,
-		6,
-		5,
-		5,
-		5,
-		5,
-		5,
-		4,
-		4,
-		4,
-		3,
-		3,
-		3,
-		3,
-		2,
-		2,
-		2,
-		2,
-		1,
-		1,
-		1,
-		1,
-		1,
-		0
-	};
-	static int BodyShape[32] =
-	{
-		0,
-		31,
-		30,
-		29,
-		28,
-		27,
-		26,
-		25,
-		24,
-		23,
-		22,
-		21,
-		20,
-		19,
-		18,
-		17,
-		16,
-		15,
-		14,
-		13,
-		12,
-		11,
-		10,
-		9,
-		8,
-		7,
-		6,
-		5,
-		4,
-		3,
-		2,
-		1
-	};
-	static Gdiplus::Point TurretAdjust[32]
-	{
-		{ 1, 2 },
-		{ -1, 1 },
-		{ -2, 0 },
-		{ -3, 0 },
-		{ -3, 1 },
-		{ -4, -1 },
-		{ -4, -1 },
-		{ -5, -2 },
-		{ -5, -3 },
-		{ -5, -3 },
-		{ -3, -3 },
-		{ -3, -4 },
-		{ -3, -4 },
-		{ -3, -5 },
-		{ -2, -5 },
-		{ -1, -5 },
-		{ 0, -5 },
-		{ 1, -6 },
-		{ 2, -5 },
-		{ 3, -5 },
-		{ 4, -5 },
-		{ 6, -4 },
-		{ 6, -3 },
-		{ 6, -3 },
-		{ 6, -3 },
-		{ 5, -1 },
-		{ 5, -1 },
-		{ 4, 0 },
-		{ 3, 0 },
-		{ 2, 0 },
-		{ 2, 1 },
-		{ 1, 2 }
-	};
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
+		for (int x = 0; x < width; x++)
 		{
-			int cell = (i * width) + j;
-			Template t = templates->Get(cell);
-			const char* name = "clear1";
-			int icon = ((cell & 3) | ((cell >> 4) & 12));
-			if (t.type)
+			int cell = (y * width) + x;
+			Overlay* o = overlays->Get(cell);
+			if (o)
 			{
-				name = t.type->Name.c_str();
-				icon = t.icon;
-			}
-			Tile* tile;
-			if (TheTilesetManager->GetTileData(name, icon, tile))
-			{
-				Gdiplus::Rect r;
-				r.X = j * tilesize;
-				r.Y = i * tilesize;
-				r.Width = tilesize;
-				r.Height = tilesize;
-				graphics->DrawImage(tile->Image, r);
-			}
-		}
-	}
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			int cell = (i * width) + j;
-			Smudge o = smudges->Get(cell);
-			const char* name = nullptr;
-			int icon = 0;
-			if (o.type)
-			{
-				name = o.type->Name.c_str();
-				icon = o.icon;
-			}
-			if (name)
-			{
-				Tile* tile;
-				if (TheTilesetManager->GetTileData(name, icon, tile))
+				if (o->type->Flag == OVERLAYTYPE_WALL)
 				{
-					int twidth = tile->Image->GetWidth() / tilescale;
-					int theight = tile->Image->GetHeight() / tilescale;
-					int xpos = j * tilesize;
-					int ypos = i * tilesize;
-					Gdiplus::Rect r;
-					r.X = xpos;
-					r.Y = ypos;
-					r.Width = twidth;
-					r.Height = theight;
-					graphics->DrawImage(tile->Image, r);
-				}
-			}
-		}
-	}
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			int cell = (i * width) + j;
-			Overlay o = overlays->Get(cell);
-			const char* name = nullptr;
-			int icon = 0;
-			if (o.type)
-			{
-				name = o.type->Name.c_str();
-				if (o.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD && !isra)
-				{
-					name = OverlayType::Tiberium[rand() % OverlayType::Tiberium.size()]->Name.c_str();
-				}
-				if (o.type->Flag == OVERLAYTYPE_TIBERIUMORGOLD && isra)
-				{
-					name = OverlayType::Gold[rand() % OverlayType::Gold.size()]->Name.c_str();
-				}
-				if (o.type->Flag == OVERLAYTYPE_GEMS)
-				{
-					name = OverlayType::Gems[rand() % OverlayType::Gems.size()]->Name.c_str();
-				}
-				icon = o.icon;
-			}
-			if (name)
-			{
-				Tile* tile;
-				if (TheTilesetManager->GetTileData(name, icon, tile))
-				{
-					int twidth = tilesize;
-					int theight = tilesize;
-					if (o.type->Flag == OVERLAYTYPE_CRATE || o.type->Flag == OVERLAYTYPE_FLAG)
+					Overlay* north = overlays->Adjacent(cell, FACING_NORTH);
+					Overlay* east = overlays->Adjacent(cell, FACING_EAST);
+					Overlay* south = overlays->Adjacent(cell, FACING_SOUTH);
+					Overlay* west = overlays->Adjacent(cell, FACING_WEST);
+					int count = 0;
+					if (north && north->type == o->type)
 					{
-						twidth = tile->Image->GetWidth() / tilescale;
-						theight = tile->Image->GetHeight() / tilescale;
+						count |= 1;
 					}
-					int xpos = (j * tilesize) + (tilesize / 2) - (twidth / 2);
-					int ypos = (i * tilesize) + (tilesize / 2) - (theight / 2);
-					Gdiplus::Rect r;
-					r.X = xpos;
-					r.Y = ypos;
-					r.Width = twidth;
-					r.Height = theight;
-					graphics->DrawImage(tile->Image, r);
+					if (east && east->type == o->type)
+					{
+						count |= 2;
+					}
+					if (south && south->type == o->type)
+					{
+						count |= 4;
+					}
+					if (west && west->type == o->type)
+					{
+						count |= 8;
+					}
+					o->icon = count;
+					overlays->Set(cell, o);
 				}
 			}
 		}
 	}
-	std::vector<std::pair<Occupier *, Gdiplus::Point>> occupiers = technos->GetOccupiers(typeid(Terrain));
-	for (auto i : occupiers)
+}
+
+void Map::RemoveBib(Structure* building)
+{
+	for (auto x : from(smudges->IntersectsWith(building->BibCells)).where([](std::pair<int, Smudge*> p) {return p.second->type->Flag & SMUDGETYPE_BIB; }).toStdVector())
 	{
-		Terrain *o = (Terrain *)i.first;
-		Gdiplus::Point p = i.second;
-		const char* name = nullptr;
-		int icon = 0;
-		if (o->type)
+		delete smudges->Get(x.first);
+		smudges->Set(x.first, nullptr);
+	}
+	building->BibCells.clear();
+}
+
+void Map::SmudgeCellChanged(CellChangedEventArgs<Smudge*> e)
+{
+	if (updatecount == 0)
+	{
+		if (e.OldValue != nullptr)
 		{
-			name = o->type->Name.c_str();
-			if (o->type->IsMine)
-			{
-				name = "OREMINE";
-			}
+			overlappers->Remove(e.OldValue);
 		}
-		if (name)
+		if (e.Value != nullptr)
 		{
-			Tile* tile;
-			if (TheTilesetManager->GetTileData(name, icon, tile))
-			{
-				int twidth = tile->Image->GetWidth() / tilescale;
-				int theight = tile->Image->GetHeight() / tilescale;
-				int xpos = p.X * tilesize;
-				int ypos = p.Y * tilesize;
-				Gdiplus::Rect r;
-				r.X = xpos;
-				r.Y = ypos;
-				r.Width = twidth;
-				r.Height = theight;
-				graphics->DrawImage(tile->Image, r);
-			}
+			overlappers->Add(e.Location, e.Value);
 		}
 	}
-	std::vector<std::pair<Occupier*, Gdiplus::Point>> boccupiers = buildings->GetOccupiers(typeid(Structure));
-	for (auto i : boccupiers)
+	else
 	{
-		Structure* building = (Structure *)i.first;
-		Gdiplus::Point topLeft = i.second;
-		Gdiplus::StringFormat stringFormat;
-		stringFormat.SetAlignment(Gdiplus::StringAlignmentCenter);
-		stringFormat.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-		Gdiplus::SolidBrush fakeBackgroundBrush = Gdiplus::SolidBrush(Gdiplus::Color(64, 0, 0, 0));
-		Gdiplus::SolidBrush fakeTextBrush = Gdiplus::SolidBrush(Gdiplus::Color(128, 255, 255, 255));
-		Gdiplus::SolidBrush baseBackgroundBrush = Gdiplus::SolidBrush(Gdiplus::Color(64, 0, 0, 0));
-		Gdiplus::SolidBrush baseTextBrush = Gdiplus::SolidBrush(Gdiplus::Color(128, 255, 0, 0));
-		int num = 0;
-		if (building->type->HasTurret)
+		invalidateoverlappers = true;
+	}
+}
+
+void Map::OverlayCellChanged(CellChangedEventArgs<Overlay*> e)
+{
+	if (e.OldValue != nullptr && e.OldValue->type->IsWall)
+	{
+		buildings->Remove(e.OldValue);
+	}
+	if (e.Value != nullptr && e.Value->type->IsWall)
+	{
+		buildings->Add(e.Location, e.Value);
+	}
+	if (updating)
+	{
+		return;
+	}
+	Overlay* o[2] = { e.OldValue,e.Value };
+	for (auto overlay : o)
+	{
+		if (overlay == nullptr)
 		{
-			num = BodyShape[Facing32[building->direction.ID]];
-			if (building->strength < 128)
-			{
-				if (isra)
-				{
-					num += (!_stricmp(building->type->Name.c_str(), "sam") ? 35 : 64);
-				}
-				else
-				{
-					num += 64;
-				}
-			}
+			continue;
 		}
-		else if (building->strength <= 1)
+		MapLayerFlag mapLayerFlag = MAPLAYER_NONE;
+		if (overlay->type->IsResource)
 		{
-			num = -1;
-		}
-		else if (building->strength < 128)
-		{
-			num = -2;
-			if (!_stricmp(building->type->Name.c_str(), "weap") || !_stricmp(building->type->Name.c_str(), "weaf"))
-			{
-				num = 1;
-			}
-			else if (!isra && !_stricmp(building->type->Name.c_str(), "proc"))
-			{
-				num = 30;
-			}
-			else if (!_stricmp(building->type->Name.c_str(), "eye"))
-			{
-				num = 16;
-			}
-			else if (!_stricmp(building->type->Name.c_str(), "silo"))
-			{
-				num = 5;
-			}
-			else if (!_stricmp(building->type->Name.c_str(), "fix"))
-			{
-				num = 7;
-			}
-			else if (!_stricmp(building->type->Name.c_str(), "v19"))
-			{
-				num = 14;
-			}
-		}
-		Gdiplus::Rect buildingBounds;
-		Tile* tile;
-		Tile* factoryOverlayTile;
-		TeamColor* bcolor;
-		if (isra)
-		{
-			bcolor = TheTeamColorManagerRA->GetColor(building->house->StructColor.c_str());
+			mapLayerFlag = MAPLAYER_RESOURCES;
 		}
 		else
 		{
-			bcolor = TheTeamColorManagerTD->GetColor(building->house->StructColor.c_str());
+			if (!overlay->type->IsWall)
+			{
+				continue;
+			}
+			mapLayerFlag = MAPLAYER_WALLS;
 		}
-		if (TheTilesetManager->GetTeamColorTileData(building->type->TileName.c_str(), num, bcolor, tile))
+		std::set<Gdiplus::Point> value;
+		if (!TryGetValue(invalidatelayers, mapLayerFlag, value))
 		{
-			Gdiplus::Point location(topLeft.X * tilesize, topLeft.Y * tilesize);
-			Gdiplus::Size size1(tile->Image->GetWidth() / tilescale, tile->Image->GetHeight() / tilescale);
-			buildingBounds = Gdiplus::Rect(location, size1);
-			factoryOverlayTile = nullptr;
-			if (building->type->FactoryOverlay.length())
+			invalidatelayers[mapLayerFlag] = value;
+		}
+		Gdiplus::Rect r(e.Location, Gdiplus::Size(1, 1));
+		r.Inflate(1, 1);
+		std::set<Gdiplus::Point> p = GetPoints(r);
+		UnionWith(value, p);
+	}
+	if (updatecount == 0)
+	{
+		Update();
+	}
+}
+
+void Map::BuildingsOccupierRemoved(OccupierEventArgs<Occupier*> args)
+{
+	if (typeid(*args.Occupier) == typeid(Structure))
+	{
+		Structure* s = dynamic_cast<Structure*>(args.Occupier);
+		RemoveBib(s);
+	}
+	technos->Remove(args.Occupier);
+}
+
+void Map::TechnosOccupierAdded(OccupierEventArgs<Occupier*> args)
+{
+	if (typeid(*args.Occupier) == typeid(Overlapper))
+	{
+		Overlapper* overlapper = dynamic_cast<Overlapper*>(args.Occupier);
+		if (updatecount == 0)
+		{
+			overlappers->Add(args.Location, overlapper);
+		}
+		else
+		{
+			invalidateoverlappers = true;
+		}
+	}
+}
+
+void Map::TechnosOccupierRemoved(OccupierEventArgs<Occupier*> args)
+{
+	if (typeid(*args.Occupier) == typeid(Overlapper))
+	{
+		Overlapper* overlapper = dynamic_cast<Overlapper*>(args.Occupier);
+		if (updatecount == 0)
+		{
+			overlappers->Remove(overlapper);
+		}
+		else
+		{
+			invalidateoverlappers = true;
+		}
+	}
+}
+
+void Map::Init()
+{
+	if (isra)
+	{
+		for (TemplateType *i : TemplateType::PointersRA)
+		{
+			if (i)
 			{
-				int shape = 0;
-				if (building->strength < 128)
-				{
-					if (isra)
-					{
-						shape = 4;
-					}
-					else
-					{
-						shape = 10;
-					}
-				}
-				TheTilesetManager->GetTeamColorTileData(building->type->FactoryOverlay.c_str(), shape, bcolor, factoryOverlayTile);
+				i->Init();
 			}
-			if (factoryOverlayTile != nullptr)
+		}
+		for (std::pair<std::string, SmudgeType*>i : SmudgeType::SmudgeMapRA)
+		{
+			i.second->Init();
+		}
+		for (std::pair<std::string, OverlayType*>i : OverlayType::OverlayMapRA)
+		{
+			i.second->Init();
+		}
+		for (std::pair<std::string, TerrainType*>i : TerrainType::TerrainMapRA)
+		{
+			i.second->Init();
+		}
+		for (std::pair<std::string, StructType*>i : StructType::StructMapRA)
+		{
+			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_NORTH; }).first());
+		}
+	}
+	else
+	{
+		for (TemplateType* i : TemplateType::PointersTD)
+		{
+			if (i)
 			{
-				graphics->DrawImage(tile->Image, buildingBounds, 0, 0, tile->Image->GetWidth(), tile->Image->GetHeight(), Gdiplus::UnitPixel);
-				graphics->DrawImage(factoryOverlayTile->Image, buildingBounds, 0, 0, tile->Image->GetWidth(), tile->Image->GetHeight(), Gdiplus::UnitPixel);
+				i->Init();
 			}
-			else
+		}
+		for (std::pair<std::string, SmudgeType*>i : SmudgeType::SmudgeMapTD)
+		{
+			i.second->Init();
+		}
+		for (std::pair<std::string, OverlayType*>i : OverlayType::OverlayMapTD)
+		{
+			i.second->Init();
+		}
+		for (std::pair<std::string, TerrainType*>i : TerrainType::TerrainMapTD)
+		{
+			i.second->Init();
+		}
+		for (std::pair<std::string, StructType*>i : StructType::StructMapTD)
+		{
+			i.second->Init(isra, from(HouseType::HouseMapTD).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_NORTH; }).first());
+		}
+	}
+}
+
+void Map::Free()
+{
+	if (isra)
+	{
+		for (TemplateType* i : TemplateType::PointersRA)
+		{
+			if (i)
 			{
-				graphics->DrawImage(tile->Image, buildingBounds, 0, 0, tile->Image->GetWidth(), tile->Image->GetHeight(), Gdiplus::UnitPixel);
+				i->Free();
 			}
-			if (building->type->IsFake)
+		}
+		for (std::pair<std::string, SmudgeType*>i : SmudgeType::SmudgeMapRA)
+		{
+			i.second->Free();
+		}
+		for (std::pair<std::string, OverlayType*>i : OverlayType::OverlayMapRA)
+		{
+			i.second->Free();
+		}
+		for (std::pair<std::string, TerrainType*>i : TerrainType::TerrainMapRA)
+		{
+			i.second->Free();
+		}
+		for (std::pair<std::string, StructType*>i : StructType::StructMapRA)
+		{
+			i.second->Free();
+		}
+	}
+	else
+	{
+		for (TemplateType* i : TemplateType::PointersTD)
+		{
+			if (i)
 			{
-				const wchar_t* text = L"FAKE";
-				NONCLIENTMETRICS cmetrics;
-				cmetrics.cbSize = sizeof(cmetrics);
-				SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(cmetrics), &cmetrics, 0);
-				HDC dc = GetDC(nullptr);
-				Gdiplus::Font font(dc, &cmetrics.lfCaptionFont);
-				Gdiplus::SizeF size2;
-				graphics->MeasureString(text, wcslen(text), &font, Gdiplus::SizeF(0, 0), nullptr, &size2);
-				size2 = size2 + Gdiplus::SizeF(6, 6);
-				Gdiplus::RectF rectangleF(Gdiplus::PointF((float)buildingBounds.X, (float)buildingBounds.Y), size2);
-				graphics->FillRectangle(&fakeBackgroundBrush, rectangleF);
-				graphics->DrawString(text, wcslen(text), &font, rectangleF, &stringFormat, &fakeTextBrush);
-				ReleaseDC(nullptr, dc);
+				i->Free();
 			}
-			if (building->basePriority >= 0)
-			{
-				wchar_t buf[10];
-				const wchar_t* text2 = _itow(building->basePriority, buf, 10);
-				NONCLIENTMETRICS cmetrics;
-				cmetrics.cbSize = sizeof(cmetrics);
-				SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(cmetrics), &cmetrics, 0);
-				HDC dc = GetDC(nullptr);
-				Gdiplus::Font font(dc, &cmetrics.lfCaptionFont);
-				Gdiplus::SizeF size3;
-				graphics->MeasureString(text2, wcslen(text2), &font, Gdiplus::SizeF(0, 0), nullptr, &size3);
-				size3 = size3 + Gdiplus::SizeF(6, 6);
-				Gdiplus::Point p(buildingBounds.X, buildingBounds.Y);
-				p = p + Gdiplus::Size((int)(((float)buildingBounds.Width - size3.Width) / 2), (int)((float)buildingBounds.Height - size3.Height));
-				Gdiplus::RectF rectangleF2(Gdiplus::PointF((float)p.X, (float)p.Y), size3);
-				graphics->FillRectangle(&baseBackgroundBrush, rectangleF2);
-				graphics->DrawString(text2, wcslen(text2), &font, rectangleF2, &stringFormat, &baseTextBrush);
-				ReleaseDC(nullptr, dc);
-			}
+		}
+		for (std::pair<std::string, SmudgeType*>i : SmudgeType::SmudgeMapTD)
+		{
+			i.second->Free();
+		}
+		for (std::pair<std::string, OverlayType*>i : OverlayType::OverlayMapTD)
+		{
+			i.second->Free();
+		}
+		for (std::pair<std::string, TerrainType*>i : TerrainType::TerrainMapTD)
+		{
+			i.second->Free();
+		}
+		for (std::pair<std::string, StructType*>i : StructType::StructMapTD)
+		{
+			i.second->Free();
 		}
 	}
 }

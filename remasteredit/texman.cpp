@@ -1,3 +1,4 @@
+#include "global.h"
 #include "texman.h"
 #include "miniz.h"
 #include "ramfile.h"
@@ -12,25 +13,25 @@
 using json = nlohmann::json;
 unsigned DLL_CALLCONV myReadProc(void* buffer, unsigned size, unsigned count, fi_handle handle)
 {
-	FileClass* f = (FileClass*)handle;
+	FileClass* f = static_cast<FileClass *>(handle);
 	return f->Read(buffer, size * count);
 }
 
 unsigned DLL_CALLCONV myWriteProc(void* buffer, unsigned size, unsigned count, fi_handle handle)
 {
-	FileClass* f = (FileClass*)handle;
+	FileClass* f = static_cast<FileClass*>(handle);
 	return f->Write(buffer, size * count);
 }
 
 int DLL_CALLCONV mySeekProc(fi_handle handle, long offset, int origin)
 {
-	FileClass* f = (FileClass*)handle;
+	FileClass* f = static_cast<FileClass*>(handle);
 	return f->Seek(offset, origin);
 }
 
 long DLL_CALLCONV myTellProc(fi_handle handle)
 {
-	FileClass* f = (FileClass*)handle;
+	FileClass* f = static_cast<FileClass*>(handle);
 	return f->Seek(0, SEEK_CUR);
 }
 
@@ -165,7 +166,7 @@ Gdiplus::Bitmap *CopyBitmap(Gdiplus::Bitmap *bitmap)
 
 static float frac(float x)
 {
-	return x - (float)(int)x;
+	return x - static_cast<float>(static_cast<int>(x));
 }
 static float lerp(float x, float y, float t)
 {
@@ -178,21 +179,21 @@ static float saturate(float x)
 
 static int GetPixelFormatSize(Gdiplus::PixelFormat pixfmt)
 {
-	return ((int)pixfmt >> 8) & 0xFF;
+	return (static_cast<int>(pixfmt) >> 8) & 0xFF;
 }
 
 static float ToLinear(float v)
 {
 	if (!(v < 0.04045f))
 	{
-		return (float)pow((200 * v + 11.0f) / 211.0f, 2.4000000953674316f);
+		return static_cast<float>(pow((200 * v + 11.0f) / 211.0f, 2.4000000953674316f));
 	}
 	return v * 25.0f / 323.0f;
 }
 
 static float ToLinear(unsigned char v)
 {
-	return ToLinear((float)(int)v / 255.0f);
+	return ToLinear(static_cast<float>(static_cast<int>(v) / 255.0f));
 }
 
 static float GetHue(Gdiplus::Color color)
@@ -203,9 +204,9 @@ static float GetHue(Gdiplus::Color color)
 	if (R == G && G == B)
 		return 0; // 0 makes as good an UNDEFINED value as any
 
-	float r = (float)R / 255.0f;
-	float g = (float)G / 255.0f;
-	float b = (float)B / 255.0f;
+	float r = static_cast<float>(R) / 255.0f;
+	float g = static_cast<float>(G) / 255.0f;
+	float b = static_cast<float>(B) / 255.0f;
 
 	float max, min;
 	float delta;
@@ -240,9 +241,9 @@ static float GetHue(Gdiplus::Color color)
 
 static float ToSRGB(float v)
 {
-	if (!((double)v < 0.0031308))
+	if (!(static_cast<double>(v) < 0.0031308))
 	{
-		return ((float)pow(v, 0.4166666567325592) * 211 - 11) / 200;
+		return (static_cast<float>(pow(v, 0.4166666567325592)) * 211 - 11) / 200;
 	}
 	return v * 323 / 25;
 }
@@ -318,10 +319,10 @@ std::pair<Gdiplus::Bitmap*, Gdiplus::Rect> TextureManager::GetTexture(const char
 				io.write_proc = myWriteProc;
 				io.seek_proc = mySeekProc;
 				io.tell_proc = myTellProc;
-				FREE_IMAGE_FORMAT fif = FreeImage_GetFileTypeFromHandle(&io, (fi_handle)tga, 0);
+				FREE_IMAGE_FORMAT fif = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(tga), 0);
 				if (fif != FIF_UNKNOWN)
 				{
-					FIBITMAP* dib = FreeImage_LoadFromHandle(fif, &io, (fi_handle)tga, 0);
+					FIBITMAP* dib = FreeImage_LoadFromHandle(fif, &io, static_cast<fi_handle>(tga), 0);
 					FREE_IMAGE_TYPE type = FreeImage_GetImageType(dib);
 					if (type != FIT_BITMAP)
 					{
@@ -337,7 +338,7 @@ std::pair<Gdiplus::Bitmap*, Gdiplus::Rect> TextureManager::GetTexture(const char
 					Gdiplus::BitmapData data;
 					Gdiplus::Rect rect(0, 0, width, height);
 					bitmap->LockBits(&rect, Gdiplus::ImageLockModeWrite, format, &data);
-					FreeImage_ConvertToRawBits((BYTE*)data.Scan0, dib, pitch, FreeImage_GetBPP(dib), FreeImage_GetRedMask(dib), FreeImage_GetGreenMask(dib), FreeImage_GetBlueMask(dib), true);
+					FreeImage_ConvertToRawBits(static_cast<BYTE*>(data.Scan0), dib, pitch, FreeImage_GetBPP(dib), FreeImage_GetRedMask(dib), FreeImage_GetGreenMask(dib), FreeImage_GetBlueMask(dib), true);
 					bitmap->UnlockBits(&data);
 					FreeImage_Unload(dib);
 					if (jstr)
@@ -378,10 +379,10 @@ std::pair<Gdiplus::Bitmap*, Gdiplus::Rect> TextureManager::GetTexture(const char
 				io.write_proc = myWriteProc;
 				io.seek_proc = mySeekProc;
 				io.tell_proc = myTellProc;
-				FREE_IMAGE_FORMAT fif = FreeImage_GetFileTypeFromHandle(&io, (fi_handle)f, 0);
+				FREE_IMAGE_FORMAT fif = FreeImage_GetFileTypeFromHandle(&io, static_cast<fi_handle>(f), 0);
 				if (fif != FIF_UNKNOWN)
 				{
-					FIBITMAP* dib = FreeImage_LoadFromHandle(fif, &io, (fi_handle)f, 0);
+					FIBITMAP* dib = FreeImage_LoadFromHandle(fif, &io, static_cast<fi_handle>(f), 0);
 					FREE_IMAGE_TYPE type = FreeImage_GetImageType(dib);
 					if (type != FIT_BITMAP)
 					{
@@ -397,7 +398,7 @@ std::pair<Gdiplus::Bitmap*, Gdiplus::Rect> TextureManager::GetTexture(const char
 					Gdiplus::BitmapData data;
 					Gdiplus::Rect rect(0, 0, width, height);
 					bitmap->LockBits(&rect, Gdiplus::ImageLockModeWrite, format, &data);
-					FreeImage_ConvertToRawBits((BYTE*)data.Scan0, dib, pitch, FreeImage_GetBPP(dib), FreeImage_GetRedMask(dib), FreeImage_GetGreenMask(dib), FreeImage_GetBlueMask(dib), true);
+					FreeImage_ConvertToRawBits(static_cast<BYTE*>(data.Scan0), dib, pitch, FreeImage_GetBPP(dib), FreeImage_GetRedMask(dib), FreeImage_GetGreenMask(dib), FreeImage_GetBlueMask(dib), true);
 					bitmap->UnlockBits(&data);
 					FreeImage_Unload(dib);
 					CachedTextures[filename] = bitmap;
@@ -458,17 +459,17 @@ std::pair<Gdiplus::Bitmap*, Gdiplus::Rect> TextureManager::GetTexture(const char
 				num6 = num13 * lerp(std::get<0>(valueTuple4), saturate(std::get<1>(valueTuple5) - std::get<0>(valueTuple4)), num12);
 				num7 = num13 * lerp(std::get<0>(valueTuple4), saturate(std::get<2>(valueTuple5) - std::get<0>(valueTuple4)), num12);
 				std::tuple<float, float, float> valueTuple6 = std::tuple<float, float, float>(min(1, max(0, num5 - teamColor->InputLevels.X) / (teamColor->InputLevels.Z - teamColor->InputLevels.X)), min(1, max(0, num6 - teamColor->InputLevels.X) / (teamColor->InputLevels.Z - teamColor->InputLevels.X)), min(1, max(0, num7 - teamColor->InputLevels.X) / (teamColor->InputLevels.Z - teamColor->InputLevels.X)));
-				std::get<0>(valueTuple6) = (float)pow(std::get<0>(valueTuple6), teamColor->InputLevels.Y);
-				std::get<1>(valueTuple6) = (float)pow(std::get<1>(valueTuple6), teamColor->InputLevels.Y);
-				std::get<2>(valueTuple6) = (float)pow(std::get<2>(valueTuple6), teamColor->InputLevels.Y);
+				std::get<0>(valueTuple6) = static_cast<float>(pow(std::get<0>(valueTuple6), teamColor->InputLevels.Y));
+				std::get<1>(valueTuple6) = static_cast<float>(pow(std::get<1>(valueTuple6), teamColor->InputLevels.Y));
+				std::get<2>(valueTuple6) = static_cast<float>(pow(std::get<2>(valueTuple6), teamColor->InputLevels.Y));
 				num5 = lerp(teamColor->OutputLevels.X, teamColor->OutputLevels.Y, std::get<0>(valueTuple6));
 				num6 = lerp(teamColor->OutputLevels.X, teamColor->OutputLevels.Y, std::get<1>(valueTuple6));
 				num7 = lerp(teamColor->OutputLevels.X, teamColor->OutputLevels.Y, std::get<2>(valueTuple6));
 			}
 			std::tuple<float, float, float> valueTuple7 = std::tuple<float, float, float>(min(1, max(0, num5 - teamColor->OverallInputLevels.X) / (teamColor->OverallInputLevels.Z - teamColor->OverallInputLevels.X)), min(1, max(0, num6 - teamColor->OverallInputLevels.X) / (teamColor->OverallInputLevels.Z - teamColor->OverallInputLevels.X)), min(1, max(0, num7 - teamColor->OverallInputLevels.X) / (teamColor->OverallInputLevels.Z - teamColor->OverallInputLevels.X)));
-			std::get<0>(valueTuple7) = (float)pow(std::get<0>(valueTuple7), teamColor->OverallInputLevels.Y);
-			std::get<1>(valueTuple7) = (float)pow(std::get<1>(valueTuple7), teamColor->OverallInputLevels.Y);
-			std::get<2>(valueTuple7) = (float)pow(std::get<2>(valueTuple7), teamColor->OverallInputLevels.Y);
+			std::get<0>(valueTuple7) = static_cast<float>(pow(std::get<0>(valueTuple7), teamColor->OverallInputLevels.Y));
+			std::get<1>(valueTuple7) = static_cast<float>(pow(std::get<1>(valueTuple7), teamColor->OverallInputLevels.Y));
+			std::get<2>(valueTuple7) = static_cast<float>(pow(std::get<2>(valueTuple7), teamColor->OverallInputLevels.Y));
 			num5 = lerp(teamColor->OverallOutputLevels.X, teamColor->OverallOutputLevels.Y, std::get<0>(valueTuple7));
 			num6 = lerp(teamColor->OverallOutputLevels.X, teamColor->OverallOutputLevels.Y, std::get<1>(valueTuple7));
 			num7 = lerp(teamColor->OverallOutputLevels.X, teamColor->OverallOutputLevels.Y, std::get<2>(valueTuple7));

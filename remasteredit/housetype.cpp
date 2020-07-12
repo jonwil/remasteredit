@@ -1,3 +1,4 @@
+#include "global.h"
 #include "housetype.h"
 std::map<std::string, HouseType*> HouseType::HouseMapTD;
 std::map<std::string, HouseType*> HouseType::HouseMapRA;

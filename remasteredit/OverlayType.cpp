@@ -1,4 +1,6 @@
+#include "global.h"
 #include "overlaytype.h"
+#include "tileset.h"
 std::map<std::string, OverlayType*> OverlayType::OverlayMapTD;
 std::map<std::string, OverlayType*> OverlayType::OverlayMapRA;
 std::vector<OverlayType*> OverlayType::Tiberium;
@@ -115,3 +117,12 @@ OverlayType const* const OverlayType::PointersRA[OVERLAYRA_COUNT] = {
 	& RAFENCE,
 	& RAWATERCRATE
 };
+
+void OverlayType::Init()
+{
+	Tile* tile;
+	if (TheTilesetManager->GetTileData(Name.c_str(), 0, tile))
+	{
+		Thumbnail = tile->Image->Clone(Gdiplus::Rect(0, 0, tile->Image->GetWidth(), tile->Image->GetHeight()), PixelFormatDontCare);
+	}
+}

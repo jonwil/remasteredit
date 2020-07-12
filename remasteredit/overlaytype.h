@@ -1,8 +1,5 @@
 #pragma once
 #include "theatertype.h"
-#include <string>
-#include <map>
-#include <vector>
 typedef enum OverlayTypeFlag
 {
 	OVERLAYTYPE_NONE,
@@ -85,10 +82,18 @@ public:
 	std::string TextId;
 	unsigned char Theater;
 	OverlayTypeFlag Flag;
+	Gdiplus::Bitmap* Thumbnail;
 	bool* OccupyMask;
 	int Width;
 	int Height;
-	OverlayType(char id, const char* name, const char *textid, unsigned char theater, OverlayTypeFlag flag, bool isra) : ID(id), Name(name), TextId(textid), Theater(theater), Flag(flag), Width(1), Height(1)
+	bool IsResource;
+	bool IsTiberiumOrGold;
+	bool IsGem;
+	bool IsWall;
+	bool IsCrate;
+	bool IsFlag;
+	bool IsPlaceable;
+	OverlayType(char id, const char* name, const char* textid, unsigned char theater, OverlayTypeFlag flag, bool isra) : ID(id), Name(name), TextId(textid), Theater(theater), Flag(flag), Width(1), Height(1), Thumbnail(nullptr), IsResource(flag& (OVERLAYTYPE_TIBERIUMORGOLD | OVERLAYTYPE_GEMS)), IsTiberiumOrGold(flag& OVERLAYTYPE_TIBERIUMORGOLD), IsGem(flag& OVERLAYTYPE_GEMS), IsWall(flag& OVERLAYTYPE_WALL), IsCrate(flag& OVERLAYTYPE_CRATE), IsFlag(flag& OVERLAYTYPE_FLAG), IsPlaceable(!(flag & ~OVERLAYTYPE_CRATE))
 	{
 		static bool mask[1] = { true };
 		if (isra)
@@ -113,6 +118,14 @@ public:
 		}
 		OccupyMask = mask;
 	}
+	void Free()
+	{
+		if (Thumbnail)
+		{
+			delete Thumbnail;
+			Thumbnail = nullptr;
+		}
+	}
 	static OverlayType const* const PointersRA[OVERLAYRA_COUNT];
 	static OverlayType const* const PointersTD[OVERLAYTD_COUNT];
 	static std::map<std::string, OverlayType*> OverlayMapTD;
@@ -120,4 +133,5 @@ public:
 	static std::vector<OverlayType*> Tiberium;
 	static std::vector<OverlayType*> Gold;
 	static std::vector<OverlayType*> Gems;
+	void Init();
 };

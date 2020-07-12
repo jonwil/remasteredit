@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 typedef enum VesselTypeRA : char {
 	VESSELRA_NONE = -1,
 	VESSELRA_SS,

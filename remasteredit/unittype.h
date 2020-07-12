@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 typedef enum UnitTypeTD : char {
 	UNITTD_NONE = -1,
 	UNITTD_HTANK,

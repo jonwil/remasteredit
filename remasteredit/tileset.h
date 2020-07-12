@@ -1,13 +1,4 @@
 #pragma once
-#include <vector>
-#include <string>
-#include <map>
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <shlwapi.h>
-#pragma warning(disable: 4458)
-#include <gdiplus.h>
-#pragma warning(default: 4458)
 class TeamColor;
 class TextureManager;
 class MegFileManager;
