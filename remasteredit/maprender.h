@@ -5,6 +5,7 @@ class Smudge;
 class Overlay;
 class Structure;
 class Infantry;
+class Aircraft;
 using RenderFunc = std::function<void(Gdiplus::Graphics*,Gdiplus::Rect)>;
 class MapRender
 {
@@ -14,4 +15,5 @@ public:
 	static std::pair<Gdiplus::Rect, RenderFunc> Render(Gdiplus::Point topLeft, Gdiplus::Size tileSize, int tileScale, Smudge* smudge);
 	static std::pair<Gdiplus::Rect, RenderFunc> Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, int tileScale, Overlay* overlay);
 	static std::pair<Gdiplus::Rect, RenderFunc> Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, int tileScale, Structure* building);
+	static std::pair<Gdiplus::Rect, RenderFunc> Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, Aircraft* unit);
 };

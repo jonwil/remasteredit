@@ -1,5 +1,5 @@
 #pragma once
-typedef enum InfantryTypeTD : char {
+enum InfantryTypeTD {
 	INFANTRYTD_NONE = -1,
 	INFANTRYTD_E1,
 	INFANTRYTD_E2,
@@ -23,8 +23,8 @@ typedef enum InfantryTypeTD : char {
 	INFANTRYTD_CHAN,
 	INFANTRYTD_COUNT,
 	INFANTRYTD_FIRST = 0
-} InfantryTypeTD;
-typedef enum InfantryTypeRA : char {
+};
+enum InfantryTypeRA {
 	INFANTRYRA_NONE = -1,
 	INFANTRYRA_E1,
 	INFANTRYRA_E2,
@@ -54,4 +54,4 @@ typedef enum InfantryTypeRA : char {
 	INFANTRYRA_MECHANIC,
 	INFANTRYRA_COUNT,
 	INFANTRYRA_FIRST = 0
-} InfantryTypeRA;
+};

@@ -1,5 +1,5 @@
 #pragma once
-typedef enum UnitTypeTD : char {
+enum UnitTypeTD {
 	UNITTD_NONE = -1,
 	UNITTD_HTANK,
 	UNITTD_MTANK,
@@ -25,8 +25,8 @@ typedef enum UnitTypeTD : char {
 	UNITTD_STEG,
 	UNITTD_COUNT,
 	UNITTD_FIRST = 0
-} UnitTypeTD; 
-typedef enum UnitTypeRA : char {
+};
+enum UnitTypeRA {
 	UNITRA_NONE = -1,
 	UNITRA_HTANK,
 	UNITRA_MTANK,
@@ -52,4 +52,4 @@ typedef enum UnitTypeRA : char {
 	UNITRA_PHASE,
 	UNITRA_COUNT,
 	UNITRA_FIRST = 0
-} UnitTypeRA;
+};

@@ -1,12 +1,12 @@
 #pragma once
-typedef enum SmudgeTypeFlag : char {
+enum SmudgeTypeFlag {
 	SMUDGETYPE_NONE = 0x0,
 	SMUDGETYPE_BIB = 0x1,
 	SMUDGETYPE_BIB1 = 0x3,
 	SMUDGETYPE_BIB2 = 0x5,
 	SMUDGETYPE_BIB3 = 0x9
-} SmudgeTypeFlag;
-typedef enum SmudgeTypeTD : char {
+};
+enum SmudgeTypeTD {
 	SMUDGETD_NONE = -1,
 	SMUDGETD_CRATER1,
 	SMUDGETD_CRATER2,
@@ -25,8 +25,8 @@ typedef enum SmudgeTypeTD : char {
 	SMUDGETD_BIB3,
 	SMUDGETD_COUNT,
 	SMUDGETD_FIRST = 0
-} SmudgeTypeTD;
-typedef enum SmudgeTypeRA : char {
+};
+enum SmudgeTypeRA {
 	SMUDGERA_NONE = -1,
 	SMUDGERA_CRATER1,
 	SMUDGERA_CRATER2,
@@ -45,7 +45,7 @@ typedef enum SmudgeTypeRA : char {
 	SMUDGERA_BIB3,
 	SMUDGERA_COUNT,
 	SMUDGERA_FIRST = 0
-} SmudgeTypeRA;
+};
 class SmudgeType
 {
 public:

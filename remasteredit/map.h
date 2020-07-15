@@ -9,6 +9,7 @@ class TerrainType;
 class StructType;
 class HouseType;
 class Map;
+class AircraftType;
 inline std::set<Gdiplus::Point> GetPoints(Gdiplus::Rect rectangle)
 {
 	std::set<Gdiplus::Point> p;
@@ -610,7 +611,7 @@ public:
 	const TerrainType* type;
 	int icon;
 	std::string trigger;
-	Terrain() : type(nullptr), icon(0)
+	Terrain() : type(nullptr), icon(0), trigger("None")
 	{
 	}
 };
@@ -627,7 +628,19 @@ public:
 	bool sellable;
 	bool rebuild;
 	std::set<int> BibCells;
-	Structure() : type(nullptr), strength(0), basePriority(-1), isPrebuilt(true), sellable(false), rebuild(false)
+	Structure() : type(nullptr), strength(0), basePriority(-1), isPrebuilt(true), sellable(false), rebuild(false), trigger("None"), house(nullptr)
+	{
+	}
+};
+class Aircraft : public Occupier, public Overlapper
+{
+public:
+	const AircraftType* type;
+	HouseType* house;
+	int strength;
+	DirectionType direction;
+	std::string mission;
+	Aircraft() : type(nullptr), strength(0), house(nullptr)
 	{
 	}
 };

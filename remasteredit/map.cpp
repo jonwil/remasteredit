@@ -8,6 +8,7 @@
 #include "smudgetype.h"
 #include "TerrainType.h"
 #include "structtype.h"
+#include "AircraftType.h"
 #include "INI.H"
 #include "RAWFILE.H"
 #include "XSTRAW.H"
@@ -37,23 +38,23 @@ const char* RAInterior[5] = { "RA_Units", "RA_Structures", "RA_VFX", "Common_VFX
 #define	TD_MAP_CELL_TOTAL			(TD_MAP_CELL_W*TD_MAP_CELL_H)
 std::map<std::string, int> TDTheaterIDs;
 std::map<std::string, int> RATheaterIDs;
-const FacingType CellMetrics::AdjacentFacings[8] = { FACING_NORTH, FACING_NORTHEAST, FACING_EAST, FACING_SOUTHEAST, FACING_SOUTH, FACING_SOUTHWEST, FACING_WEST, FACING_NORTHWEST };
+const FacingType CellMetrics::AdjacentFacings[8] = { FACING_N, FACING_NE, FACING_E, FACING_SE, FACING_S, FACING_SW, FACING_W, FACING_NW };
 DirectionType DirectionType::Types[16] = {
-	{0, "North", FACING_NORTH},
+	{0, "North", FACING_N},
 	{16, "North-NorthEast", FACING_NONE},
-	{32, "NorthEast", FACING_NORTHEAST},
+	{32, "NorthEast", FACING_NE},
 	{48, "East-NorthEast", FACING_NONE},
-	{64, "East", FACING_EAST},
+	{64, "East", FACING_E},
 	{80, "East-SouthEast", FACING_NONE},
-	{96, "SouthEast", FACING_SOUTHEAST},
+	{96, "SouthEast", FACING_SE},
 	{112, "South-SouthEast", FACING_NONE},
-	{128, "South", FACING_SOUTH},
+	{128, "South", FACING_S},
 	{144, "South-SouthWest", FACING_NONE},
-	{160, "SouthWest", FACING_SOUTHWEST},
+	{160, "SouthWest", FACING_SW},
 	{176, "West-SouthWest", FACING_NONE},
-	{192, "West", FACING_WEST},
+	{192, "West", FACING_W},
 	{208, "West-NorthWest", FACING_NONE},
-	{224, "NorthWest", FACING_NORTHWEST},
+	{224, "NorthWest", FACING_NW},
 	{240, "North-NorthWest", FACING_NONE}
 };
 Map::Map() : width(0), height(0), size(0), templates(nullptr), overlays(nullptr), smudges(nullptr), technos(nullptr), buildings(nullptr), isra(false), theaterid(0), metrics(nullptr), updatecount(0), updating(false), invalidateoverlappers(false), baseplayer(nullptr), player(nullptr), overlappers(nullptr)
@@ -161,7 +162,7 @@ void Map::Load(const char* path)
 	INIClass ini;
 	ini.Load(f);
 	char bpath[MAX_PATH];
-	strcpy(bpath, __argv[2]);
+	strcpy(bpath, path);
 	PathRenameExtension(bpath, ".bin");
 	RawFileClass bin(bpath);
 	isra = true;
@@ -221,13 +222,13 @@ void Map::Load(const char* path)
 		ini.Get_String("Basic", "Player", "", pl, 20);
 		_strlwr(pl);
 		player = HouseType::HouseMapRA[pl];
-		if (!_stricmp(pl, "USSR") || !_stricmp(pl, "Ukrane") || !_stricmp(pl, "BadGuy"))
+		if (_stricmp(pl, "USSR") && _stricmp(pl, "Ukrane") && _stricmp(pl, "BadGuy"))
 		{
-			baseplayer = HouseType::HouseMapRA["GoodGuy"];
+			baseplayer = HouseType::HouseMapRA["BadGuy"];
 		}
 		else
 		{
-			baseplayer = HouseType::HouseMapRA["BadGuy"];
+			baseplayer = HouseType::HouseMapRA["GoodGuy"];
 		}
 		width = RA_MAP_CELL_W;
 		height = RA_MAP_CELL_H;
@@ -369,6 +370,33 @@ void Map::Load(const char* path)
 				buildings->Add(cellid, s);
 			}
 		}
+		for (int i = 0; i < ini.Entry_Count("AIRCRAFT"); i++)
+		{
+			const char* cell = ini.Get_Entry("AIRCRAFT", i);
+			char aircraft[200];
+			ini.Get_String("AIRCRAFT", cell, nullptr, aircraft, 200);
+			char* house = strtok(aircraft, ",");
+			char* name = strtok(nullptr, ",");
+			int strength = atoi(strtok(nullptr, ","));
+			int cellid = atoi(strtok(nullptr, ","));
+			unsigned char direction = (unsigned char)((atoi(strtok(nullptr, ",")) + 8) & -16);
+			char* mission = strtok(nullptr, ",");
+			_strlwr(name);
+			if (AircraftType::AircraftMapRA.count(name))
+			{
+				Aircraft* a = new Aircraft;
+				a->type = AircraftType::AircraftMapRA[name];
+				a->OccupyMask = a->type->OccupyMask;
+				a->Width = a->type->Width;
+				a->Height = a->type->Height;
+				a->house = HouseType::HouseMapRA[house];
+				a->strength = strength;
+				a->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
+				a->mission = mission;
+				a->OverlapBounds = a->type->OverlapBounds;
+				technos->Add(cellid, a);
+			}
+		}
 		for (int i = 0; i < ini.Entry_Count("Base"); i++)
 		{
 			const char* p = ini.Get_Entry("Base", i);
@@ -465,13 +493,13 @@ void Map::Load(const char* path)
 		ini.Get_String("Basic", "Player", "", pl, 20);
 		_strlwr(pl);
 		player = HouseType::HouseMapTD[pl];
-		if (!_stricmp(pl, "BadGuy"))
+		if (_stricmp(pl, "BadGuy"))
 		{
-			baseplayer = HouseType::HouseMapTD["GoodGuy"];
+			baseplayer = HouseType::HouseMapTD["BadGuy"];
 		}
 		else
 		{
-			baseplayer = HouseType::HouseMapTD["BadGuy"];
+			baseplayer = HouseType::HouseMapTD["GoodGuy"];
 		}
 		width = TD_MAP_CELL_W;
 		height = TD_MAP_CELL_H;
@@ -557,6 +585,33 @@ void Map::Load(const char* path)
 				}
 				t->OverlapBounds = t->type->OverlapBounds;
 				technos->Add(cellid, t);
+			}
+		}
+		for (int i = 0; i < ini.Entry_Count("Aircraft"); i++)
+		{
+			const char* cell = ini.Get_Entry("Aircraft", i);
+			char aircraft[200];
+			ini.Get_String("Aircraft", cell, nullptr, aircraft, 200);
+			char* house = strtok(aircraft, ",");
+			char* name = strtok(nullptr, ",");
+			int strength = atoi(strtok(nullptr, ","));
+			int cellid = atoi(strtok(nullptr, ","));
+			unsigned char direction = (unsigned char)((atoi(strtok(nullptr, ",")) + 8) & -16);
+			char* mission = strtok(nullptr, ",");
+			_strlwr(name);
+			if (AircraftType::AircraftMapTD.count(name))
+			{
+				Aircraft* a = new Aircraft;
+				a->type = AircraftType::AircraftMapTD[name];
+				a->OccupyMask = a->type->OccupyMask;
+				a->Width = a->type->Width;
+				a->Height = a->type->Height;
+				a->house = HouseType::HouseMapTD[house];
+				a->strength = strength;
+				a->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
+				a->mission = mission;
+				a->OverlapBounds = a->type->OverlapBounds;
+				technos->Add(cellid, a);
 			}
 		}
 		for (int i = 0; i < ini.Entry_Count("Structures"); i++)
@@ -714,10 +769,10 @@ void Map::UpdateWallOverlays(std::set<Gdiplus::Point> locations)
 			{
 				if (o->type->Flag == OVERLAYTYPE_WALL)
 				{
-					Overlay* north = overlays->Adjacent(cell, FACING_NORTH);
-					Overlay* east = overlays->Adjacent(cell, FACING_EAST);
-					Overlay* south = overlays->Adjacent(cell, FACING_SOUTH);
-					Overlay* west = overlays->Adjacent(cell, FACING_WEST);
+					Overlay* north = overlays->Adjacent(cell, FACING_N);
+					Overlay* east = overlays->Adjacent(cell, FACING_E);
+					Overlay* south = overlays->Adjacent(cell, FACING_S);
+					Overlay* west = overlays->Adjacent(cell, FACING_W);
 					int count = 0;
 					if (north && north->type == o->type)
 					{
@@ -889,7 +944,11 @@ void Map::Init()
 		}
 		for (std::pair<std::string, StructType*>i : StructType::StructMapRA)
 		{
-			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_NORTH; }).first());
+			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
+		}
+		for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapRA)
+		{
+			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
 		}
 	}
 	else
@@ -915,7 +974,11 @@ void Map::Init()
 		}
 		for (std::pair<std::string, StructType*>i : StructType::StructMapTD)
 		{
-			i.second->Init(isra, from(HouseType::HouseMapTD).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_NORTH; }).first());
+			i.second->Init(isra, from(HouseType::HouseMapTD).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
+		}
+		for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapTD)
+		{
+			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
 		}
 	}
 }
@@ -947,6 +1010,10 @@ void Map::Free()
 		{
 			i.second->Free();
 		}
+		for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapRA)
+		{
+			i.second->Free();
+		}
 	}
 	else
 	{
@@ -970,6 +1037,10 @@ void Map::Free()
 			i.second->Free();
 		}
 		for (std::pair<std::string, StructType*>i : StructType::StructMapTD)
+		{
+			i.second->Free();
+		}
+		for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapTD)
 		{
 			i.second->Free();
 		}

@@ -9,7 +9,9 @@
 #include "smudgetype.h"
 #include "TemplateType.h"
 #include "TerrainType.h"
+#include "AircraftType.h"
 #include "boolinq.h"
+static unsigned short _stretch[FACING_COUNT] = { 8, 9, 10, 9, 8, 9, 10, 9 };
 static int Facing16[256] =
 {
 	0,
@@ -737,16 +739,10 @@ void MapRender::Render(Map* map, Gdiplus::Graphics* graphics, const std::set<Gdi
 				Tile* tile;
 				if (TheTilesetManager->GetTileData(name, icon, tile))
 				{
-					int twidth = tile->Image->GetWidth() / TileWidth;
-					int theight = tile->Image->GetHeight() / TileHeight;
-					int xpos = p.X * TileWidth;
-					int ypos = p.Y * TileHeight;
-					Gdiplus::Rect r;
-					r.X = xpos;
-					r.Y = ypos;
-					r.Width = twidth;
-					r.Height = theight;
-					graphics->DrawImage(tile->Image, r);
+					Gdiplus::Point location(p.X * tileSize.Width, p.Y * tileSize.Height);
+					Gdiplus::Size size(tile->Image->GetWidth() / tileScale, tile->Image->GetHeight() / tileScale);
+					Gdiplus::Rect terrainBounds(location, size);
+					list.push_back(std::make_pair(terrainBounds, [tile](Gdiplus::Graphics* g, Gdiplus::Rect terrainBounds) {g->DrawImage(tile->Image, terrainBounds, 0, 0, tile->Image->GetWidth(), tile->Image->GetHeight(), Gdiplus::UnitPixel); }));
 				}
 			}
 		}
@@ -760,6 +756,18 @@ void MapRender::Render(Map* map, Gdiplus::Graphics* graphics, const std::set<Gdi
 			if (locations.empty() || locations.count(topLeft))
 			{
 				list.push_back(Render(map->isra, topLeft, tileSize, tileScale, building));
+			}
+		}
+	}
+	if ((layers & MAPLAYER_UNITS) != 0)
+	{
+		for (auto i : map->technos->GetOccupiers(typeid(Aircraft)))
+		{
+			Aircraft* aircraft = dynamic_cast<Aircraft*>(i.first);
+			Gdiplus::Point topLeft = i.second;
+			if (locations.empty() || locations.count(topLeft))
+			{
+				list.push_back(Render(map->isra, topLeft, tileSize, aircraft));
 			}
 		}
 	}
@@ -851,7 +859,7 @@ std::pair<Gdiplus::Rect, RenderFunc> MapRender::Render(bool isra, Gdiplus::Point
 		{
 			if (isra)
 			{
-				num += (!_stricmp(building->type->Name.c_str(), "sam") ? 35 : 64);
+				num += (building->type->ID == STRUCTRA_SAM ? 35 : 64);
 			}
 			else
 			{
@@ -866,29 +874,51 @@ std::pair<Gdiplus::Rect, RenderFunc> MapRender::Render(bool isra, Gdiplus::Point
 	else if (building->strength < 128)
 	{
 		num = -2;
-		if (!_stricmp(building->type->Name.c_str(), "weap") || !_stricmp(building->type->Name.c_str(), "weaf"))
+		if (!isra)
 		{
-			num = 1;
+			switch(building->type->ID)
+			{
+			case STRUCTTD_WEAP:
+				num = 1;
+				break;
+			case STRUCTTD_REFINERY:
+				num = 30;
+				break;
+			case STRUCTTD_EYE:
+				num = 16;
+				break;
+			case STRUCTTD_STORAGE:
+				num = 5;
+				break;
+			case STRUCTTD_REPAIR:
+				num = 7;
+				break;
+			case STRUCTTD_PUMP:
+				num = 14;
+				break;
+			}
 		}
-		else if (!isra && !_stricmp(building->type->Name.c_str(), "proc"))
+		else
 		{
-			num = 30;
-		}
-		else if (!_stricmp(building->type->Name.c_str(), "eye"))
-		{
-			num = 16;
-		}
-		else if (!_stricmp(building->type->Name.c_str(), "silo"))
-		{
-			num = 5;
-		}
-		else if (!_stricmp(building->type->Name.c_str(), "fix"))
-		{
-			num = 7;
-		}
-		else if (!_stricmp(building->type->Name.c_str(), "v19"))
-		{
-			num = 14;
+			switch (building->type->ID)
+			{
+			case STRUCTRA_WEAP:
+			case STRUCTRA_FAKEWEAP:
+				num = 1;
+				break;
+			case STRUCTRA_REFINERY:
+				num = 30;
+				break;
+			case STRUCTRA_STORAGE:
+				num = 5;
+				break;
+			case STRUCTRA_REPAIR:
+				num = 7;
+				break;
+			case STRUCTRA_PUMP:
+				num = 14;
+				break;
+			}
 		}
 	}
 	Gdiplus::Rect buildingBounds;
@@ -981,4 +1011,205 @@ std::pair<Gdiplus::Rect, RenderFunc> MapRender::Render(bool isra, Gdiplus::Point
 		});
 	}
 	return std::make_pair(Gdiplus::Rect(), [](Gdiplus::Graphics*,Gdiplus::Rect) {});
+}
+
+typedef enum DirType : unsigned char {
+	DIR_MIN = 0,
+	DIR_N = 0,
+	DIR_NE = 1 << 5,
+	DIR_E = 2 << 5,
+	DIR_SE = 3 << 5,
+	DIR_S = 4 << 5,
+	DIR_SW = 5 << 5,
+	DIR_SW_X1 = (5 << 5) - 8,		// Direction of harvester while unloading.
+	DIR_SW_X2 = (5 << 5) - 16,		// Direction of harvester while unloading.
+	DIR_W = 6 << 5,
+	DIR_NW = 7 << 5,
+	DIR_MAX = 254
+} DirType;
+
+inline DirType operator + (DirType f1, DirType f2)
+{
+	return (DirType)(((int)f1 + (int)f2) & 0x00FF);
+}
+
+inline DirType operator + (DirType f1, int f2)
+{
+	return (DirType)(((int)f1 + (int)f2) & 0x00FF);
+}
+
+int __cdecl calcx(signed short param1, short distance)
+{
+	__asm {
+		movzx	eax, [param1]
+		mov	bx, [distance]
+		imul 	bx
+		shl	ax, 1
+		rcl	dx, 1
+		mov	al, ah
+		mov	ah, dl
+		cwd
+	}
+}
+
+int __cdecl calcy(signed short param1, short distance)
+{
+	__asm {
+		movzx	eax, [param1]
+		mov	bx, [distance]
+		imul bx
+		shl	ax, 1
+		rcl	dx, 1
+		mov	al, ah
+		mov	ah, dl
+		cwd
+		neg	eax
+	}
+}
+
+void Move_Point(short& x, short& y, DirType dir, unsigned short distance)
+{
+	static unsigned char const CosTable[256] = {
+		0x00,0x03,0x06,0x09,0x0c,0x0f,0x12,0x15,
+		0x18,0x1b,0x1e,0x21,0x24,0x27,0x2a,0x2d,
+		0x30,0x33,0x36,0x39,0x3b,0x3e,0x41,0x43,
+		0x46,0x49,0x4b,0x4e,0x50,0x52,0x55,0x57,
+		0x59,0x5b,0x5e,0x60,0x62,0x64,0x65,0x67,
+		0x69,0x6b,0x6c,0x6e,0x6f,0x71,0x72,0x74,
+		0x75,0x76,0x77,0x78,0x79,0x7a,0x7b,0x7b,
+		0x7c,0x7d,0x7d,0x7e,0x7e,0x7e,0x7e,0x7e,
+
+		0x7f,0x7e,0x7e,0x7e,0x7e,0x7e,0x7d,0x7d,
+		0x7c,0x7b,0x7b,0x7a,0x79,0x78,0x77,0x76,
+		0x75,0x74,0x72,0x71,0x70,0x6e,0x6c,0x6b,
+		0x69,0x67,0x66,0x64,0x62,0x60,0x5e,0x5b,
+		0x59,0x57,0x55,0x52,0x50,0x4e,0x4b,0x49,
+		0x46,0x43,0x41,0x3e,0x3b,0x39,0x36,0x33,
+		0x30,0x2d,0x2a,0x27,0x24,0x21,0x1e,0x1b,
+		0x18,0x15,0x12,0x0f,0x0c,0x09,0x06,0x03,
+
+		0x00,0xfd,0xfa,0xf7,0xf4,0xf1,0xee,0xeb,
+		0xe8,0xe5,0xe2,0xdf,0xdc,0xd9,0xd6,0xd3,
+		0xd0,0xcd,0xca,0xc7,0xc5,0xc2,0xbf,0xbd,
+		0xba,0xb7,0xb5,0xb2,0xb0,0xae,0xab,0xa9,
+		0xa7,0xa5,0xa2,0xa0,0x9e,0x9c,0x9a,0x99,
+		0x97,0x95,0x94,0x92,0x91,0x8f,0x8e,0x8c,
+		0x8b,0x8a,0x89,0x88,0x87,0x86,0x85,0x85,
+		0x84,0x83,0x83,0x82,0x82,0x82,0x82,0x82,
+
+		0x82,0x82,0x82,0x82,0x82,0x82,0x83,0x83,
+		0x84,0x85,0x85,0x86,0x87,0x88,0x89,0x8a,
+		0x8b,0x8c,0x8e,0x8f,0x90,0x92,0x94,0x95,
+		0x97,0x99,0x9a,0x9c,0x9e,0xa0,0xa2,0xa5,
+		0xa7,0xa9,0xab,0xae,0xb0,0xb2,0xb5,0xb7,
+		0xba,0xbd,0xbf,0xc2,0xc5,0xc7,0xca,0xcd,
+		0xd0,0xd3,0xd6,0xd9,0xdc,0xdf,0xe2,0xe5,
+		0xe8,0xeb,0xee,0xf1,0xf4,0xf7,0xfa,0xfd,
+	};
+	static unsigned char const SinTable[256] = {
+		0x7f,0x7e,0x7e,0x7e,0x7e,0x7e,0x7d,0x7d,
+		0x7c,0x7b,0x7b,0x7a,0x79,0x78,0x77,0x76,
+		0x75,0x74,0x72,0x71,0x70,0x6e,0x6c,0x6b,
+		0x69,0x67,0x66,0x64,0x62,0x60,0x5e,0x5b,
+		0x59,0x57,0x55,0x52,0x50,0x4e,0x4b,0x49,
+		0x46,0x43,0x41,0x3e,0x3b,0x39,0x36,0x33,
+		0x30,0x2d,0x2a,0x27,0x24,0x21,0x1e,0x1b,
+		0x18,0x15,0x12,0x0f,0x0c,0x09,0x06,0x03,
+		0x00,0xfd,0xfa,0xf7,0xf4,0xf1,0xee,0xeb,
+		0xe8,0xe5,0xe2,0xdf,0xdc,0xd9,0xd6,0xd3,
+		0xd0,0xcd,0xca,0xc7,0xc5,0xc2,0xbf,0xbd,
+		0xba,0xb7,0xb5,0xb2,0xb0,0xae,0xab,0xa9,
+		0xa7,0xa5,0xa2,0xa0,0x9e,0x9c,0x9a,0x99,
+		0x97,0x95,0x94,0x92,0x91,0x8f,0x8e,0x8c,
+		0x8b,0x8a,0x89,0x88,0x87,0x86,0x85,0x85,
+		0x84,0x83,0x83,0x82,0x82,0x82,0x82,0x82,
+		0x82,0x82,0x82,0x82,0x82,0x82,0x83,0x83,
+		0x84,0x85,0x85,0x86,0x87,0x88,0x89,0x8a,
+		0x8b,0x8c,0x8e,0x8f,0x90,0x92,0x94,0x95,
+		0x97,0x99,0x9a,0x9c,0x9e,0xa0,0xa2,0xa5,
+		0xa7,0xa9,0xab,0xae,0xb0,0xb2,0xb5,0xb7,
+		0xba,0xbd,0xbf,0xc2,0xc5,0xc7,0xca,0xcd,
+		0xd0,0xd3,0xd6,0xd9,0xdc,0xdf,0xe2,0xe5,
+		0xe8,0xeb,0xee,0xf1,0xf4,0xf7,0xfa,0xfd,
+		0x00,0x03,0x06,0x09,0x0c,0x0f,0x12,0x15,
+		0x18,0x1b,0x1e,0x21,0x24,0x27,0x2a,0x2d,
+		0x30,0x33,0x36,0x39,0x3b,0x3e,0x41,0x43,
+		0x46,0x49,0x4b,0x4e,0x50,0x52,0x55,0x57,
+		0x59,0x5b,0x5e,0x60,0x62,0x64,0x65,0x67,
+		0x69,0x6b,0x6c,0x6e,0x6f,0x71,0x72,0x74,
+		0x75,0x76,0x77,0x78,0x79,0x7a,0x7b,0x7b,
+		0x7c,0x7d,0x7d,0x7e,0x7e,0x7e,0x7e,0x7e,
+	};
+	char* cos_table = (char*)&CosTable[0];
+	x += static_cast<short>(calcx(cos_table[dir], distance));
+	char* sin_table = (char*)&SinTable[0];
+	y += static_cast<short>(calcy(sin_table[dir], distance));
+}
+
+FacingType Dir_Facing(DirType facing) { return (FacingType)(((unsigned char)(facing + 0x10) & 0xFF) >> 5); }
+
+std::pair<Gdiplus::Rect, RenderFunc> MapRender::Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, Aircraft* unit)
+{
+	int icon = BodyShape[Facing32[unit->direction.ID]];
+	if (isra)
+	{
+		if (unit->type->ID == AIRCRAFTRA_LONGBOW || unit->type->ID == AIRCRAFTRA_HIND || unit->type->ID == AIRCRAFTRA_TRANSPORT)
+		{
+			icon = BodyShape[Facing16[unit->direction.ID] * 2] / 2;
+		}
+	}
+	Gdiplus::Rect renderBounds;
+	Tile* tile = nullptr;
+	Tile* rrotortile = nullptr;
+	Tile* lrotortile = nullptr;
+	if (TheTilesetManager->GetTeamColorTileData(unit->type->Name.c_str(), icon, TheTeamColorManagerTD->GetColor(unit->house->UnitColor.c_str()), tile))
+	{
+		if (unit->type->RotorCount)
+		{
+			TheTilesetManager->GetTileData("RROTOR", 4, rrotortile);
+		}
+		if (unit->type->RotorCount == 2)
+		{
+			TheTilesetManager->GetTileData("LROTOR", 4, lrotortile);
+		}
+		Gdiplus::Point pt = Gdiplus::Point(topLeft.X * tileSize.Width, topLeft.Y * tileSize.Height) + Gdiplus::Size(tileSize.Width / 2, tileSize.Height / 2);
+		renderBounds = Gdiplus::Rect(pt - Gdiplus::Size(unit->type->RenderSize.Width / 2, unit->type->RenderSize.Height / 2), unit->type->RenderSize);
+		return std::make_pair(renderBounds, [tile, rrotortile, lrotortile, unit, tileSize, topLeft](Gdiplus::Graphics* graphics, Gdiplus::Rect renderBounds)
+			{
+				graphics->DrawImage(tile->Image, renderBounds, 0, 0, tile->Image->GetWidth(), tile->Image->GetHeight(), Gdiplus::UnitPixel);
+				if (lrotortile)
+				{
+					Gdiplus::Point pt(renderBounds.X, renderBounds.Y);
+					pt = pt + Gdiplus::Size(renderBounds.Width / 2, renderBounds.Height / 2);
+					short x = 0;
+					short y = 0;
+					DirType SecondaryFacing = static_cast<DirType>(unit->direction.ID);
+					FacingType face = Dir_Facing(SecondaryFacing);
+					Move_Point(x, y, SecondaryFacing, _stretch[face]);
+					pt.X += x * tileSize.Width / 24;
+					pt.Y += (y - 2) * tileSize.Width / 24;
+					Gdiplus::Size rrotorSize(rrotortile->Image->GetWidth() / TileScale, rrotortile->Image->GetHeight() / TileScale);
+					Gdiplus::Rect rrotorBounds(pt - Gdiplus::Size(rrotorSize.Width / 2, rrotorSize.Height / 2), rrotorSize);
+					graphics->DrawImage(rrotortile->Image, rrotorBounds, 0, 0, rrotortile->Image->GetWidth(), rrotortile->Image->GetHeight(), Gdiplus::UnitPixel);
+					pt.X -= x * tileSize.Width / 24;
+					pt.Y -= (y - 2) * tileSize.Width / 24;
+					Move_Point(x, y, SecondaryFacing + DIR_S, _stretch[face] * 2);
+					pt.X += x * tileSize.Width / 24;
+					pt.Y += (y - 2) * tileSize.Width / 24;
+					Gdiplus::Size lrotorSize(lrotortile->Image->GetWidth() / TileScale, lrotortile->Image->GetHeight() / TileScale);
+					Gdiplus::Rect lrotorBounds(pt - Gdiplus::Size(lrotorSize.Width / 2, lrotorSize.Height / 2), lrotorSize);
+					graphics->DrawImage(lrotortile->Image, lrotorBounds, 0, 0, lrotortile->Image->GetWidth(), lrotortile->Image->GetHeight(), Gdiplus::UnitPixel);
+				}
+				else if (rrotortile)
+				{
+					Gdiplus::Point pt(renderBounds.X, renderBounds.Y);
+					pt = pt + Gdiplus::Size(renderBounds.Width / 2, renderBounds.Height / 2);
+					pt.Y -= 2;
+					Gdiplus::Size rrotorSize(rrotortile->Image->GetWidth() / TileScale, rrotortile->Image->GetHeight() / TileScale);
+					Gdiplus::Rect rrotorBounds(pt - Gdiplus::Size(rrotorSize.Width / 2, rrotorSize.Height / 2), rrotorSize);
+					graphics->DrawImage(rrotortile->Image, rrotorBounds, 0, 0, rrotortile->Image->GetWidth(), rrotortile->Image->GetHeight(), Gdiplus::UnitPixel);
+				}
+			});
+	}
+	return std::make_pair(Gdiplus::Rect(), [](Gdiplus::Graphics*, Gdiplus::Rect) {});
 }

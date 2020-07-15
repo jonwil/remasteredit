@@ -105,6 +105,7 @@
     <ClCompile Include="..\utils\STRAW.CPP" />
     <ClCompile Include="..\utils\XPIPE.CPP" />
     <ClCompile Include="..\utils\XSTRAW.CPP" />
+    <ClCompile Include="aircrafttype.cpp" />
     <ClCompile Include="housetype.cpp" />
     <ClCompile Include="mainwindow.cpp" />
     <ClCompile Include="map.cpp" />

@@ -1245,7 +1245,7 @@ void TemplateType::Init()
 	int num = max(IconWidth, IconHeight);
 	Thumbnail = new Gdiplus::Bitmap(num * size.Width, num * size.Height);
 	IconMask = new bool[IconWidth * IconHeight];
-	memset(IconMask, 0, sizeof(IconMask));
+	memset(IconMask, 0, sizeof(*IconMask));
 	Gdiplus::Graphics *g = Gdiplus::Graphics::FromImage(Thumbnail);
 	g->Clear(Gdiplus::Color::Transparent);
 	int num2 = 0;

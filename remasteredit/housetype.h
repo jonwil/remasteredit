@@ -1,5 +1,5 @@
 #pragma once
-typedef enum HousesTypeTD : char {
+enum HousesTypeTD {
 	HOUSETD_NONE = -1,
 	HOUSETD_GOOD,					// Global Defense Initiative
 	HOUSETD_BAD,					// Brotherhood of Nod
@@ -13,8 +13,8 @@ typedef enum HousesTypeTD : char {
 	HOUSETD_MULTI6,				// Multi-Player house #6
 	HOUSETD_COUNT,
 	HOUSETD_FIRST = HOUSETD_GOOD
-} HousesTypeTD;
-typedef enum HousesTypeRA : char {
+};
+enum HousesTypeRA {
 	HOUSERA_NONE = -1,
 	HOUSERA_SPAIN,				//	Gold (unremapped)
 	HOUSERA_GREECE,				// LtBlue
@@ -38,7 +38,7 @@ typedef enum HousesTypeRA : char {
 	HOUSERA_MULTI8,				// Multi-Player house #8
 	HOUSERA_COUNT,
 	HOUSERA_FIRST = 0
-} HousesTypeRA;
+};
 class HouseType
 {
 public:

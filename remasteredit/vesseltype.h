@@ -1,5 +1,5 @@
 #pragma once
-typedef enum VesselTypeRA : char {
+enum VesselTypeRA {
 	VESSELRA_NONE = -1,
 	VESSELRA_SS,
 	VESSELRA_DD,
@@ -10,4 +10,4 @@ typedef enum VesselTypeRA : char {
 	VESSELRA_CARRIER,
 	VESSELRA_COUNT,
 	VESSELRA_FIRST = 0
-} VesselTypeRA;
+};

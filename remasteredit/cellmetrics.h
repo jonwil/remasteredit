@@ -9,18 +9,18 @@ template <class Key, class Value, class Compare, class Allocator> bool TryGetVal
 	value = it->second;
 	return true;
 }
-enum FacingType
-{
-	FACING_NONE,
-	FACING_NORTH,
-	FACING_NORTHEAST,
-	FACING_EAST,
-	FACING_SOUTHEAST,
-	FACING_SOUTH,
-	FACING_SOUTHWEST,
-	FACING_WEST,
-	FACING_NORTHWEST,
-	FACING_COUNT
+enum FacingType {
+	FACING_NONE = -1,
+	FACING_N,
+	FACING_NE,
+	FACING_E,
+	FACING_SE,
+	FACING_S,
+	FACING_SW,
+	FACING_W,
+	FACING_NW,
+	FACING_COUNT,
+	FACING_FIRST = 0
 };
 class CellMetrics
 {
@@ -69,31 +69,31 @@ public:
 		adjacent = location;
 		switch (facing)
 		{
-		case FACING_NORTH:
+		case FACING_N:
 			adjacent.Y--;
 			break;
-		case FACING_NORTHEAST:
+		case FACING_NE:
 			adjacent.X++;
 			adjacent.Y--;
 			break;
-		case FACING_EAST:
+		case FACING_E:
 			adjacent.X++;
 			break;
-		case FACING_SOUTHEAST:
+		case FACING_SE:
 			adjacent.X++;
 			adjacent.Y++;
 			break;
-		case FACING_SOUTH:
+		case FACING_S:
 			adjacent.Y++;
 			break;
-		case FACING_SOUTHWEST:
+		case FACING_SW:
 			adjacent.X--;
 			adjacent.Y++;
 			break;
-		case FACING_WEST:
+		case FACING_W:
 			adjacent.X--;
 			break;
-		case FACING_NORTHWEST:
+		case FACING_NW:
 			adjacent.X--;
 			adjacent.Y--;
 			break;

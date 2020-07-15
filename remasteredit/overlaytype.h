@@ -1,6 +1,6 @@
 #pragma once
 #include "theatertype.h"
-typedef enum OverlayTypeFlag
+enum OverlayTypeFlag
 {
 	OVERLAYTYPE_NONE,
 	OVERLAYTYPE_TIBERIUMORGOLD,
@@ -8,8 +8,8 @@ typedef enum OverlayTypeFlag
 	OVERLAYTYPE_WALL,
 	OVERLAYTYPE_CRATE,
 	OVERLAYTYPE_FLAG
-} OverlayTypeFlag;
-typedef enum OverlayTypeTD : char {
+};
+enum OverlayTypeTD {
 	OVERLAYTD_NONE = -1,
 	OVERLAYTD_CONCRETE,
 	OVERLAYTD_SANDBAG_WALL,
@@ -43,8 +43,8 @@ typedef enum OverlayTypeTD : char {
 	OVERLAYTD_STEEL_CRATE,
 	OVERLAYTD_COUNT,
 	OVERLAYTD_FIRST = 0
-} OverlayTypeTD;
-typedef enum OverlayTypeRA : char {
+};
+enum OverlayTypeRA {
 	OVERLAYRA_NONE = -1,
 	OVERLAYRA_SANDBAG_WALL,
 	OVERLAYRA_CYCLONE_WALL,
@@ -73,7 +73,7 @@ typedef enum OverlayTypeRA : char {
 	OVERLAYRA_WATER_CRATE,
 	OVERLAYRA_COUNT,
 	OVERLAYRA_FIRST = 0
-} OverlayTypeRA;
+};
 class OverlayType
 {
 public:

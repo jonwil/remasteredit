@@ -1,13 +1,13 @@
 #pragma once
 #include "theatertype.h"
-typedef enum TemplateTypeFlag : unsigned char
+enum TemplateTypeFlag
 {
 	TEMPLATETYPE_NONE = 0,
 	TEMPLATETYPE_CLEAR = 2,
 	TEMPLATETYPE_WATER = 4
-} TemplateTypeFlag;
+};
 
-typedef enum TemplateTypeTD : unsigned char {
+enum TemplateTypeTD {
 	TEMPLATETD_CLEAR1,
 	TEMPLATETD_WATER,			// This must be the first non-clear template.
 	TEMPLATETD_WATER2,
@@ -237,9 +237,9 @@ typedef enum TemplateTypeTD : unsigned char {
 	TEMPLATETD_COUNT,
 	TEMPLATETD_NONE = 255,
 	TEMPLATETD_FIRST = 0
-} TemplateTypeTD;
+};
 
-typedef enum TemplateTypeRA : unsigned short {
+enum TemplateTypeRA {
 	TEMPLATERA_CLEAR1,
 	TEMPLATERA_WATER,			// This must be the first non-clear template.
 	TEMPLATERA_WATER2,
@@ -647,7 +647,7 @@ typedef enum TemplateTypeRA : unsigned short {
 	TEMPLATERA_COUNT,
 	TEMPLATERA_NONE = 65535,
 	TEMPLATERA_FIRST = 0
-} TemplateTypeRA;
+};
 class TemplateType
 {
 public:

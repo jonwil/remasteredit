@@ -1,5 +1,5 @@
 #pragma once
-typedef enum TerrainTypeTD : char {
+enum TerrainTypeTD {
 	TERRAINTD_NONE = -1,
 	TERRAINTD_TREE1,
 	TERRAINTD_TREE2,
@@ -35,8 +35,8 @@ typedef enum TerrainTypeTD : char {
 	TERRAINTD_ROCK7,
 	TERRAINTD_COUNT,
 	TERRAINTD_FIRST = 0
-} TerrainTypeTD;
-typedef enum TerrainTypeRA : char {
+};
+enum TerrainTypeRA {
 	TERRAINRA_NONE = -1,
 	TERRAINRA_TREE1,
 	TERRAINRA_TREE2,
@@ -75,7 +75,7 @@ typedef enum TerrainTypeRA : char {
 	TERRAINRA_MINE,
 	TERRAINRA_COUNT,
 	TERRAINRA_FIRST = 0
-} TerrainTypeRA;
+};
 class TerrainType
 {
 public:

@@ -1,7 +1,7 @@
 #pragma once
 class HouseType;
 struct DirectionType;
-typedef enum StructTypeTD : char {
+enum StructTypeTD {
 	STRUCTTD_NONE = -1,
 	STRUCTTD_WEAP,
 	STRUCTTD_GTOWER,
@@ -70,8 +70,8 @@ typedef enum StructTypeTD : char {
 	STRUCTTD_WOOD_WALL,
 	STRUCTTD_COUNT,
 	STRUCTTD_FIRST = 0
-} StructTypeTD;
-typedef enum StructTypeRA : char {
+};
+enum StructTypeRA {
 	STRUCTRA_NONE = -1,
 	STRUCTRA_ADVANCED_TECH,
 	STRUCTRA_IRON_CURTAIN,
@@ -162,7 +162,7 @@ typedef enum StructTypeRA : char {
 	STRUCTRA_LARVA2,
 	STRUCTRA_COUNT,
 	STRUCTRA_FIRST = 0
-} StructTypeRA;
+};
 class StructType
 {
 public:
