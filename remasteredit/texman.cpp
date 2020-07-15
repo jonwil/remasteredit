@@ -256,7 +256,7 @@ std::pair<Gdiplus::Bitmap*, Gdiplus::Rect> TextureManager::GetTexture(const char
 	{
 		name = teamColor->Name;
 	}
-	if (TryGetValue(TeamColorTextures, std::make_pair<std::string, std::string>(std::string(filename), std::string(name)), value))
+	if (TryGetValue(TeamColorTextures, std::make_pair(static_cast<std::string>(filename), static_cast<std::string>(name)), value))
 	{
 		return value;
 	}
@@ -483,7 +483,7 @@ std::pair<Gdiplus::Bitmap*, Gdiplus::Rect> TextureManager::GetTexture(const char
 	{
 		value.second = CalculateOpaqueBounds(value.first);
 	}
-	TeamColorTextures[std::make_pair<std::string, std::string>(std::string(filename), std::string(name))] = value;
+	TeamColorTextures[std::make_pair(static_cast<std::string>(filename), static_cast<std::string>(name))] = value;
 	return value;
 }
 

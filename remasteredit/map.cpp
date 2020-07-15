@@ -9,6 +9,7 @@
 #include "TerrainType.h"
 #include "structtype.h"
 #include "AircraftType.h"
+#include "vesseltype.h"
 #include "INI.H"
 #include "RAWFILE.H"
 #include "XSTRAW.H"
@@ -141,9 +142,9 @@ void Map::AddBib(Gdiplus::Point location, Structure* s)
 
 void Map::BuildingsOccupierAdded(OccupierEventArgs<Occupier*> args)
 {
-	if (typeid(*args.Occupier) == typeid(Structure))
+	Structure* s = dynamic_cast<Structure*>(args.Occupier);
+	if (s)
 	{
-		Structure* s = dynamic_cast<Structure*>(args.Occupier);
 		technos->Add(args.Location, args.Occupier, s->type->BaseOccupyMask, s->type->Width, s->type->Height);
 		AddBib(args.Location, s);
 	}
@@ -212,11 +213,12 @@ void Map::Load(const char* path)
 		buildings->map = this;
 		buildings->OnOccupierAdded = &Map::BuildingsOccupierAdded;
 		buildings->OnOccupierRemoved = &Map::BuildingsOccupierRemoved;
-		char th[9];
-		ini.Get_String("Map", "Theater", "", th, 9);
+		char th[12];
+		ini.Get_String("Map", "Theater", "", th, 12);
 		_strlwr(th);
 		theater = th;
 		theaterid = RATheaterIDs[theater];
+		TheTilesetManager->Reset();
 		TheTilesetManager->SetSets(RATheaters[theater]);
 		char pl[20];
 		ini.Get_String("Basic", "Player", "", pl, 20);
@@ -397,6 +399,35 @@ void Map::Load(const char* path)
 				technos->Add(cellid, a);
 			}
 		}
+		for (int i = 0; i < ini.Entry_Count("SHIPS"); i++)
+		{
+			const char* cell = ini.Get_Entry("SHIPS", i);
+			char vessel[200];
+			ini.Get_String("SHIPS", cell, nullptr, vessel, 200);
+			char* house = strtok(vessel, ",");
+			char* name = strtok(nullptr, ",");
+			int strength = atoi(strtok(nullptr, ","));
+			int cellid = atoi(strtok(nullptr, ","));
+			unsigned char direction = (unsigned char)((atoi(strtok(nullptr, ",")) + 8) & -16);
+			char* mission = strtok(nullptr, ",");
+			char* trigger = strtok(nullptr, ",");
+			_strlwr(name);
+			if (VesselType::VesselMapRA.count(name))
+			{
+				Vessel* a = new Vessel;
+				a->type = VesselType::VesselMapRA[name];
+				a->OccupyMask = a->type->OccupyMask;
+				a->Width = a->type->Width;
+				a->Height = a->type->Height;
+				a->house = HouseType::HouseMapRA[house];
+				a->strength = strength;
+				a->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
+				a->mission = mission;
+				a->trigger = trigger;
+				a->OverlapBounds = a->type->OverlapBounds;
+				technos->Add(cellid, a);
+			}
+		}
 		for (int i = 0; i < ini.Entry_Count("Base"); i++)
 		{
 			const char* p = ini.Get_Entry("Base", i);
@@ -413,7 +444,7 @@ void Map::Load(const char* path)
 				{
 					Gdiplus::Point location;
 					metrics->GetLocation(cellid, location);
-					Structure* s = dynamic_cast<Structure*>(from(buildings->GetOccupiers(typeid(Structure))).where([location](std::pair<Occupier*, Gdiplus::Point> x) {return x.second.Equals(location); }).firstOrDefault().first);
+					Structure* s = from(buildings->GetOccupiers<Structure>()).where([location](std::pair<Structure*, Gdiplus::Point> x) {return x.second.Equals(location); }).firstOrDefault().first;
 					if (s)
 					{
 						s->basePriority = priority;
@@ -483,10 +514,11 @@ void Map::Load(const char* path)
 		buildings->map = this;
 		buildings->OnOccupierAdded = &Map::BuildingsOccupierAdded;
 		buildings->OnOccupierRemoved = &Map::BuildingsOccupierRemoved;
-		char th[9];
-		ini.Get_String("Map", "Theater", "", th, 9);
+		char th[12];
+		ini.Get_String("Map", "Theater", "", th, 12);
 		theater = th;
 		theaterid = TDTheaterIDs[theater];
+		TheTilesetManager->Reset();
 		TheTilesetManager->SetSets(TDTheaters[theater]);
 		bin.Open();
 		char pl[20];
@@ -656,7 +688,7 @@ void Map::Load(const char* path)
 				if (type)
 				{
 					Gdiplus::Point location = Gdiplus::Point((cellid >> 8) & 0x3F, (cellid >> 24) & 0x3F);
-					Structure* s = dynamic_cast<Structure*>(from(buildings->GetOccupiers(typeid(Structure))).where([location](std::pair<Occupier*, Gdiplus::Point> x) {return x.second.Equals(location); }).firstOrDefault().first);
+					Structure* s = from(buildings->GetOccupiers<Structure>()).where([location](std::pair<Structure*, Gdiplus::Point> x) {return x.second.Equals(location); }).firstOrDefault().first;
 					if (s)
 					{
 						s->basePriority = priority;
@@ -708,9 +740,10 @@ void Map::Update()
 		}
 		for (auto techno : *technos)
 		{
-			if (typeid(*techno.first) == typeid(Overlapper))
+			Overlapper* overlapper = dynamic_cast<Overlapper*>(techno.first);
+			if (overlapper)
 			{
-				overlappers->Add(techno.second, dynamic_cast<Overlapper *>(techno.first));
+				overlappers->Add(techno.second, overlapper);
 			}
 		}
 	}
@@ -879,9 +912,9 @@ void Map::OverlayCellChanged(CellChangedEventArgs<Overlay*> e)
 
 void Map::BuildingsOccupierRemoved(OccupierEventArgs<Occupier*> args)
 {
-	if (typeid(*args.Occupier) == typeid(Structure))
+	Structure* s = dynamic_cast<Structure*>(args.Occupier);
+	if (s)
 	{
-		Structure* s = dynamic_cast<Structure*>(args.Occupier);
 		RemoveBib(s);
 	}
 	technos->Remove(args.Occupier);
@@ -889,9 +922,9 @@ void Map::BuildingsOccupierRemoved(OccupierEventArgs<Occupier*> args)
 
 void Map::TechnosOccupierAdded(OccupierEventArgs<Occupier*> args)
 {
-	if (typeid(*args.Occupier) == typeid(Overlapper))
+	Overlapper* overlapper = dynamic_cast<Overlapper*>(args.Occupier);
+	if (overlapper)
 	{
-		Overlapper* overlapper = dynamic_cast<Overlapper*>(args.Occupier);
 		if (updatecount == 0)
 		{
 			overlappers->Add(args.Location, overlapper);
@@ -905,9 +938,9 @@ void Map::TechnosOccupierAdded(OccupierEventArgs<Occupier*> args)
 
 void Map::TechnosOccupierRemoved(OccupierEventArgs<Occupier*> args)
 {
-	if (typeid(*args.Occupier) == typeid(Overlapper))
+	Overlapper* overlapper = dynamic_cast<Overlapper*>(args.Occupier);
+	if (overlapper)
 	{
-		Overlapper* overlapper = dynamic_cast<Overlapper*>(args.Occupier);
 		if (updatecount == 0)
 		{
 			overlappers->Remove(overlapper);
@@ -950,6 +983,10 @@ void Map::Init()
 		{
 			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
 		}
+		for (std::pair<std::string, VesselType*>i : VesselType::VesselMapRA)
+		{
+			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
+		}
 	}
 	else
 	{
@@ -985,64 +1022,62 @@ void Map::Init()
 
 void Map::Free()
 {
-	if (isra)
+	for (TemplateType* i : TemplateType::PointersRA)
 	{
-		for (TemplateType* i : TemplateType::PointersRA)
+		if (i)
 		{
-			if (i)
-			{
-				i->Free();
-			}
-		}
-		for (std::pair<std::string, SmudgeType*>i : SmudgeType::SmudgeMapRA)
-		{
-			i.second->Free();
-		}
-		for (std::pair<std::string, OverlayType*>i : OverlayType::OverlayMapRA)
-		{
-			i.second->Free();
-		}
-		for (std::pair<std::string, TerrainType*>i : TerrainType::TerrainMapRA)
-		{
-			i.second->Free();
-		}
-		for (std::pair<std::string, StructType*>i : StructType::StructMapRA)
-		{
-			i.second->Free();
-		}
-		for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapRA)
-		{
-			i.second->Free();
+			i->Free();
 		}
 	}
-	else
+	for (std::pair<std::string, SmudgeType*>i : SmudgeType::SmudgeMapRA)
 	{
-		for (TemplateType* i : TemplateType::PointersTD)
+		i.second->Free();
+	}
+	for (std::pair<std::string, OverlayType*>i : OverlayType::OverlayMapRA)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, TerrainType*>i : TerrainType::TerrainMapRA)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, StructType*>i : StructType::StructMapRA)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapRA)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, VesselType*>i : VesselType::VesselMapRA)
+	{
+		i.second->Free();
+	}
+	for (TemplateType* i : TemplateType::PointersTD)
+	{
+		if (i)
 		{
-			if (i)
-			{
-				i->Free();
-			}
+			i->Free();
 		}
-		for (std::pair<std::string, SmudgeType*>i : SmudgeType::SmudgeMapTD)
-		{
-			i.second->Free();
-		}
-		for (std::pair<std::string, OverlayType*>i : OverlayType::OverlayMapTD)
-		{
-			i.second->Free();
-		}
-		for (std::pair<std::string, TerrainType*>i : TerrainType::TerrainMapTD)
-		{
-			i.second->Free();
-		}
-		for (std::pair<std::string, StructType*>i : StructType::StructMapTD)
-		{
-			i.second->Free();
-		}
-		for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapTD)
-		{
-			i.second->Free();
-		}
+	}
+	for (std::pair<std::string, SmudgeType*>i : SmudgeType::SmudgeMapTD)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, OverlayType*>i : OverlayType::OverlayMapTD)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, TerrainType*>i : TerrainType::TerrainMapTD)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, StructType*>i : StructType::StructMapTD)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapTD)
+	{
+		i.second->Free();
 	}
 }

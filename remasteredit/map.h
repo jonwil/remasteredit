@@ -10,6 +10,7 @@ class StructType;
 class HouseType;
 class Map;
 class AircraftType;
+class VesselType;
 inline std::set<Gdiplus::Point> GetPoints(Gdiplus::Rect rectangle)
 {
 	std::set<Gdiplus::Point> p;
@@ -396,14 +397,15 @@ public:
 	{
 		return Remove(Get(location));
 	}
-	std::vector<std::pair<T, Gdiplus::Point>> GetOccupiers(const type_info& t)
+	template <class type> std::vector<std::pair<type *, Gdiplus::Point>> GetOccupiers()
 	{
-		std::vector<std::pair<T, Gdiplus::Point>> vector;
+		std::vector<std::pair<type *, Gdiplus::Point>> vector;
 		for (auto i : occupiers)
 		{
-			if (typeid(*i.first) == t)
+			type *t = dynamic_cast<type*>(i.first);
+			if (t)
 			{
-				vector.push_back(std::make_pair<T, Gdiplus::Point>(T(i.first), Gdiplus::Point(i.second)));
+				vector.push_back(std::make_pair(static_cast<type *>(t), static_cast<Gdiplus::Point>(i.second)));
 			}
 		}
 		return vector;
@@ -632,7 +634,10 @@ public:
 	{
 	}
 };
-class Aircraft : public Occupier, public Overlapper
+class Unit : public Occupier, public Overlapper
+{
+};
+class Aircraft : public Unit
 {
 public:
 	const AircraftType* type;
@@ -641,6 +646,19 @@ public:
 	DirectionType direction;
 	std::string mission;
 	Aircraft() : type(nullptr), strength(0), house(nullptr)
+	{
+	}
+};
+class Vessel : public Unit
+{
+public:
+	const VesselType* type;
+	HouseType* house;
+	int strength;
+	DirectionType direction;
+	std::string mission;
+	std::string trigger;
+	Vessel() : type(nullptr), strength(0), house(nullptr), trigger("None")
 	{
 	}
 };
