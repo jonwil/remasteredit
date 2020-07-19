@@ -3,7 +3,7 @@
 std::map<std::string, HouseType*> HouseType::HouseMapTD;
 std::map<std::string, HouseType*> HouseType::HouseMapRA;
 static const char* colors[] = { "BAD_STRUCTURE", "BAD_STRUCTURE" };
-static const char* names[] = { "harv", "BAD_STRUCTURE" };
+static const char* names[] = { "harv", "mcv" };
 static HouseType TDGOOD(HOUSETD_GOOD, "GoodGuy", "GOOD", "GOOD", 0, nullptr, nullptr, false);
 static HouseType TDBAD(HOUSETD_BAD, "BadGuy", "BAD_UNIT", "BAD_STRUCTURE", 2, colors, names, false);
 static HouseType TDNEUTRAL(HOUSETD_NEUTRAL, "Neutral", "", "", 0, nullptr, nullptr, false);

@@ -123,6 +123,7 @@
     <ClCompile Include="TerrainType.cpp" />
     <ClCompile Include="texman.cpp" />
     <ClCompile Include="tileset.cpp" />
+    <ClCompile Include="unittype.cpp" />
     <ClCompile Include="vesseltype.cpp" />
     <ClCompile Include="window.cpp" />
   </ItemGroup>

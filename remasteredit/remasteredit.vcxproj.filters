@@ -126,6 +126,9 @@
     <ClCompile Include="vesseltype.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="unittype.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AircraftType.h">

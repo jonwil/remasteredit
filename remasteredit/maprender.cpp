@@ -11,6 +11,7 @@
 #include "TerrainType.h"
 #include "AircraftType.h"
 #include "vesseltype.h"
+#include "unittype.h"
 #include "boolinq.h"
 static unsigned short _stretch[FACING_COUNT] = { 8, 9, 10, 9, 8, 9, 10, 9 };
 static int Facing16[256] =
@@ -601,41 +602,6 @@ static int BodyShape[32] =
 	2,
 	1
 };
-static Gdiplus::Point TurretAdjust[32] =
-{
-	{ 1, 2 },
-	{ -1, 1 },
-	{ -2, 0 },
-	{ -3, 0 },
-	{ -3, 1 },
-	{ -4, -1 },
-	{ -4, -1 },
-	{ -5, -2 },
-	{ -5, -3 },
-	{ -5, -3 },
-	{ -3, -3 },
-	{ -3, -4 },
-	{ -3, -4 },
-	{ -3, -5 },
-	{ -2, -5 },
-	{ -1, -5 },
-	{ 0, -5 },
-	{ 1, -6 },
-	{ 2, -5 },
-	{ 3, -5 },
-	{ 4, -5 },
-	{ 6, -4 },
-	{ 6, -3 },
-	{ 6, -3 },
-	{ 6, -3 },
-	{ 5, -1 },
-	{ 5, -1 },
-	{ 4, 0 },
-	{ 3, 0 },
-	{ 2, 0 },
-	{ 2, 1 },
-	{ 1, 2 }
-};
 static int tiberiumCounts[9] =
 {
 	0,
@@ -679,7 +645,7 @@ void MapRender::Render(Map* map, Gdiplus::Graphics* graphics, const std::set<Gdi
 		{
 			int cell;
 			map->metrics->GetCell(item9, cell);
-			Template *t = map->templates->Get(cell);
+			Template* t = map->templates->Get(cell);
 			const char* name = "clear1";
 			int shape = ((cell & 3) | ((cell >> 4) & 12));
 			if (t)
@@ -699,7 +665,7 @@ void MapRender::Render(Map* map, Gdiplus::Graphics* graphics, const std::set<Gdi
 	{
 		for (auto item10 : func())
 		{
-			Smudge *smudge = map->smudges->Get(item10);
+			Smudge* smudge = map->smudges->Get(item10);
 			if (smudge != nullptr)
 			{
 				auto r = Render(item10, tileSize, tileScale, smudge);
@@ -711,7 +677,7 @@ void MapRender::Render(Map* map, Gdiplus::Graphics* graphics, const std::set<Gdi
 	{
 		for (auto item11 : func())
 		{
-			Overlay *overlay = map->overlays->Get(item11);
+			Overlay* overlay = map->overlays->Get(item11);
 			if (overlay != nullptr && ((overlay->type->IsResource && (layers & MAPLAYER_RESOURCES) != 0) || (overlay->type->IsWall && (layers & MAPLAYER_WALLS) != 0) || (layers & MAPLAYER_OVERLAY) != 0))
 			{
 				auto r = Render(map->isra, item11, tileSize, tileScale, overlay);
@@ -762,7 +728,7 @@ void MapRender::Render(Map* map, Gdiplus::Graphics* graphics, const std::set<Gdi
 	}
 	if ((layers & MAPLAYER_UNITS) != 0)
 	{
-		for (auto i : map->technos->GetOccupiers<Unit>())
+		for (auto i : map->technos->GetOccupiers<UnitBase>())
 		{
 			Aircraft* aircraft = dynamic_cast<Aircraft*>(i.first);
 			if (aircraft)
@@ -780,6 +746,15 @@ void MapRender::Render(Map* map, Gdiplus::Graphics* graphics, const std::set<Gdi
 				if (locations.empty() || locations.count(topLeft))
 				{
 					list.push_back(Render(map->isra, topLeft, tileSize, vessel));
+				}
+			}
+			Unit* unit = dynamic_cast<Unit*>(i.first);
+			if (unit)
+			{
+				Gdiplus::Point topLeft = i.second;
+				if (locations.empty() || locations.count(topLeft))
+				{
+					list.push_back(Render(map->isra, topLeft, tileSize, unit));
 				}
 			}
 		}
@@ -1410,6 +1385,332 @@ std::pair<Gdiplus::Rect, RenderFunc> MapRender::Render(bool isra, Gdiplus::Point
 						turdir = static_cast<DirType>(Facing16[PrimaryFacing+DIR_S] * 16);
 					}
 					Vessel_Turret_Adjust(unit->type->ID, turdir, x, y);
+					pt.X += x * tileSize.Width / 24;
+					pt.Y += y * tileSize.Width / 24;
+					Gdiplus::Size turretSize(turrettile->Image->GetWidth() / TileScale, turrettile->Image->GetHeight() / TileScale);
+					Gdiplus::Rect turretBounds(pt - Gdiplus::Size(turretSize.Width / 2, turretSize.Height / 2), turretSize);
+					graphics->DrawImage(turrettile->Image, turretBounds, 0, 0, turrettile->Image->GetWidth(), turrettile->Image->GetHeight(), Gdiplus::UnitPixel);
+				}
+			});
+	}
+	return std::make_pair(Gdiplus::Rect(), [](Gdiplus::Graphics*, Gdiplus::Rect) {});
+}
+
+void TD_Turret_Adjust(DirType dir, int& x, int& y)
+{
+	static struct {
+		signed char X, Y;
+	} _adjust[32] = {
+		{1,2},	// N
+		{-1,1},
+		{-2,0},
+		{-3,0},
+		{-3,1},	// NW
+		{-4,-1},
+		{-4,-1},
+		{-5,-2},
+		{-5,-3},	// W
+		{-5,-3},
+		{-3,-3},
+		{-3,-4},
+		{-3,-4},	// SW
+		{-3,-5},
+		{-2,-5},
+		{-1,-5},
+		{0,-5},	// S
+		{1,-6},
+		{2,-5},
+		{3,-5},
+		{4,-5},	// SE
+		{6,-4},
+		{6,-3},
+		{6,-3},
+		{6,-3},	// E
+		{5,-1},
+		{5,-1},
+		{4,0},
+		{3,0},	// NE
+		{2,0},
+		{2,1},
+		{1,2}
+	};
+
+	int index = Facing32[dir];
+	x += _adjust[index].X;
+	y += _adjust[index].Y;
+}
+
+
+void RA_Turret_Adjust(Unit* unit, DirType dir, int& x, int& y)
+{
+	static struct {
+		signed char X, Y;
+	} _adjust[32] = {
+		{1,2},	// N
+		{-1,1},
+		{-2,0},
+		{-3,0},
+		{-3,1},	// NW
+		{-4,-1},
+		{-4,-1},
+		{-5,-2},
+		{-5,-3},	// W
+		{-5,-3},
+		{-3,-3},
+		{-3,-4},
+		{-3,-4},	// SW
+		{-3,-5},
+		{-2,-5},
+		{-1,-5},
+		{0,-5},	// S
+		{1,-6},
+		{2,-5},
+		{3,-5},
+		{4,-5},	// SE
+		{6,-4},
+		{6,-3},
+		{6,-3},
+		{6,-3},	// E
+		{5,-1},
+		{5,-1},
+		{4,0},
+		{3,0},	// NE
+		{2,0},
+		{2,1},
+		{1,2}
+	};
+
+	int index = 0;
+	switch (unit->type->ID) {
+	case UNITRA_JEEP:
+		y -= 4;
+		break;
+
+	case UNITRA_MGG:
+		index = Facing32[dir];
+		x += _adjust[index].X;
+		y += _adjust[index].Y;
+		break;
+
+	default:
+		break;
+	}
+}
+
+std::pair<Gdiplus::Rect, RenderFunc> MapRender::Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, Unit* unit)
+{
+	Gdiplus::Rect renderBounds;
+	TeamColor* ucolor;
+	if (isra)
+	{
+		ucolor = TheTeamColorManagerRA->GetColor(unit->house->UnitColor.c_str());
+	}
+	else
+	{
+		ucolor = TheTeamColorManagerTD->GetColor(unit->house->UnitColor.c_str());
+		if (unit->house->OverrideColors.count(unit->type->Name))
+		{
+			ucolor = TheTeamColorManagerTD->GetColor(unit->house->OverrideColors[unit->type->Name].c_str());
+		}
+	}
+	Tile* tile = nullptr;
+	Tile* waketile = nullptr;
+	Tile* turrettile = nullptr;
+	Tile* radartile = nullptr;
+	int icon;
+	int wakeicon = -1;
+	int turreticon = -1;
+	int radaricon = -1;
+	int facing = Facing32[unit->direction.ID];
+	int tfacing = facing;
+	if (!isra)
+	{
+		if (unit->type->EightFrame)
+		{
+			facing = Dir_Facing(static_cast<DirType>(unit->direction.ID));
+		}
+		switch (Dir_Facing(static_cast<DirType>(unit->direction.ID)))
+		{
+		case FACING_NE:
+		case FACING_E:
+		case FACING_SE:
+			icon = BodyShape[tfacing] + 96;
+			wakeicon = 0;
+			break;
+		case FACING_W:
+		default:
+			icon = BodyShape[tfacing];
+			wakeicon = 6;
+		}
+		if (unit->type->FourFrame)
+		{
+			if (unit->type->ID == UNITTD_GUNBOAT)
+			{
+
+				if (unit->strength < 128)
+				{
+					icon += 32;
+				}
+				if (unit->strength < 64)
+				{
+					icon += 32;
+				}
+			}
+			else
+			{
+				icon = 0;
+				wakeicon = -1;
+			}
+		}
+		else
+		{
+			wakeicon = -1;
+			icon = BodyShape[facing];
+			if (unit->type->IsAnimating)
+			{
+				icon = 0;
+			}
+			if (unit->type->EightFrame)
+			{
+				icon = 0;
+				if (facing)
+				{
+					icon = BodyShape[24 + facing];
+				}
+			}
+		}
+		if (unit->type->HasRadar)
+		{
+			radaricon = 32;
+		}
+		if (!unit->type->FourFrame && unit->type->HasTurret)
+		{
+			turreticon = BodyShape[tfacing] + 32;
+		}
+	}
+	else
+	{
+		if (unit->type->EightFrame)
+		{
+			icon = ((BodyShape[facing] + 2) / 4) & 0x07;
+		}
+		else
+		{
+			icon = BodyShape[facing];
+			if (unit->type->IsAnimating)
+			{
+				icon = 0;
+			}
+		}
+		if (unit->type->HasRadar)
+		{
+			radaricon = 32;
+		}
+		if (unit->type->HasTurret)
+		{
+			turreticon = BodyShape[tfacing] + 32;
+			if (unit->type->ID == UNITRA_PHASE)
+			{
+				turreticon += 6;
+			}
+		}
+	}
+	if (TheTilesetManager->GetTeamColorTileData(unit->type->Name.c_str(), icon, ucolor, tile))
+	{
+		if (wakeicon != -1)
+		{
+			TheTilesetManager->GetTileData("WAKE", wakeicon, waketile);
+		}
+		if (radaricon != -1)
+		{
+			TheTilesetManager->GetTileData(unit->type->Name.c_str(), radaricon, radartile);
+		}
+		if (turreticon != -1)
+		{
+			TheTilesetManager->GetTeamColorTileData(unit->type->Name.c_str(), turreticon, ucolor, turrettile);
+		}
+		Gdiplus::Point pt = Gdiplus::Point(topLeft.X * tileSize.Width, topLeft.Y * tileSize.Height) + Gdiplus::Size(tileSize.Width / 2, tileSize.Height / 2);
+		renderBounds = Gdiplus::Rect(pt - Gdiplus::Size(unit->type->RenderSize.Width / 2, unit->type->RenderSize.Height / 2), unit->type->RenderSize);
+		return std::make_pair(renderBounds, [tile, waketile, turrettile, radartile, unit, tileSize, topLeft, isra](Gdiplus::Graphics* graphics, Gdiplus::Rect renderBounds)
+			{
+				if (waketile)
+				{
+					Gdiplus::Point pt(renderBounds.X, renderBounds.Y);
+					pt = pt + Gdiplus::Size(renderBounds.Width / 2, renderBounds.Height / 2);
+					int x = 0;
+					int y = 0;
+					switch (Dir_Facing(static_cast<DirType>(unit->direction.ID)))
+					{
+					case FACING_NE:
+					case FACING_E:
+					case FACING_SE:
+						break;
+					case FACING_W:
+					default:
+						x += 4;
+						break;
+					}
+					pt.X += (x - 1) * tileSize.Width / 24;
+					pt.Y += (y + 3) * tileSize.Width / 24;
+					Gdiplus::Size wakeSize(waketile->Image->GetWidth() / TileScale, waketile->Image->GetHeight() / TileScale);
+					Gdiplus::Rect wakeBounds(pt - Gdiplus::Size(wakeSize.Width / 2, wakeSize.Height / 2), wakeSize);
+					graphics->DrawImage(waketile->Image, wakeBounds, 0, 0, waketile->Image->GetWidth(), waketile->Image->GetHeight(), Gdiplus::UnitPixel);
+				}
+				graphics->DrawImage(tile->Image, renderBounds, 0, 0, tile->Image->GetWidth(), tile->Image->GetHeight(), Gdiplus::UnitPixel);
+				if (radartile)
+				{
+					Gdiplus::Point pt(renderBounds.X, renderBounds.Y);
+					pt = pt + Gdiplus::Size(renderBounds.Width / 2, renderBounds.Height / 2);
+					int x = 0;
+					int y = 0;
+					if (!isra)
+					{
+						y = y - 5;
+					}
+					else
+					{
+						if (unit->type->ID == UNITRA_MGG)
+						{
+							DirType PrimaryFacing = static_cast<DirType>(unit->direction.ID);
+							RA_Turret_Adjust(unit, PrimaryFacing, x, y);
+						}
+						else
+						{
+							if (unit->type->ID != UNITRA_TESLATANK)
+							{
+								y = y - 5;
+							}
+						}
+					}
+					pt.X += x * tileSize.Width / 24;
+					pt.Y += y * tileSize.Width / 24;
+					Gdiplus::Size radarSize(radartile->Image->GetWidth() / TileScale, radartile->Image->GetHeight() / TileScale);
+					Gdiplus::Rect radarBounds(pt - Gdiplus::Size(radarSize.Width / 2, radarSize.Height / 2), radarSize);
+					graphics->DrawImage(radartile->Image, radarBounds, 0, 0, radartile->Image->GetWidth(), radartile->Image->GetHeight(), Gdiplus::UnitPixel);
+				}
+				if (turrettile)
+				{
+					Gdiplus::Point pt(renderBounds.X, renderBounds.Y);
+					pt = pt + Gdiplus::Size(renderBounds.Width / 2, renderBounds.Height / 2);
+					int x = 0;
+					int y = 0;
+					if (!isra)
+					{
+						if (unit->type->ID == UNITTD_MSAM || unit->type->ID == UNITTD_MLRS)
+						{
+							DirType PrimaryFacing = static_cast<DirType>(unit->direction.ID);
+							TD_Turret_Adjust(PrimaryFacing, x, y);
+						}
+						if (unit->type->ID == UNITTD_JEEP || unit->type->ID == UNITTD_BUGGY)
+						{
+							y -= 4;
+						}
+					}
+					else
+					{
+						DirType PrimaryFacing = static_cast<DirType>(unit->direction.ID);
+						RA_Turret_Adjust(unit, PrimaryFacing, x, y);
+					}
 					pt.X += x * tileSize.Width / 24;
 					pt.Y += y * tileSize.Width / 24;
 					Gdiplus::Size turretSize(turrettile->Image->GetWidth() / TileScale, turrettile->Image->GetHeight() / TileScale);

@@ -10,6 +10,7 @@
 #include "structtype.h"
 #include "AircraftType.h"
 #include "vesseltype.h"
+#include "unittype.h"
 #include "INI.H"
 #include "RAWFILE.H"
 #include "XSTRAW.H"
@@ -331,7 +332,7 @@ void Map::Load(const char* path)
 			_strlwr(terrain);
 			if (TerrainType::TerrainMapRA.count(terrain))
 			{
-				Terrain *t = new Terrain;
+				Terrain* t = new Terrain;
 				t->type = TerrainType::TerrainMapRA[terrain];
 				t->OccupyMask = t->type->OccupyMask;
 				t->Width = t->type->Size.Width;
@@ -357,7 +358,7 @@ void Map::Load(const char* path)
 			_strlwr(name);
 			if (StructType::StructMapRA.count(name))
 			{
-				Structure *s = new Structure;
+				Structure* s = new Structure;
 				s->type = StructType::StructMapRA[name];
 				s->OccupyMask = s->type->OccupyMask;
 				s->Width = s->type->Width;
@@ -416,6 +417,35 @@ void Map::Load(const char* path)
 			{
 				Vessel* a = new Vessel;
 				a->type = VesselType::VesselMapRA[name];
+				a->OccupyMask = a->type->OccupyMask;
+				a->Width = a->type->Width;
+				a->Height = a->type->Height;
+				a->house = HouseType::HouseMapRA[house];
+				a->strength = strength;
+				a->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
+				a->mission = mission;
+				a->trigger = trigger;
+				a->OverlapBounds = a->type->OverlapBounds;
+				technos->Add(cellid, a);
+			}
+		}
+		for (int i = 0; i < ini.Entry_Count("UNITS"); i++)
+		{
+			const char* cell = ini.Get_Entry("UNITS", i);
+			char unit[200];
+			ini.Get_String("UNITS", cell, nullptr, unit, 200);
+			char* house = strtok(unit, ",");
+			char* name = strtok(nullptr, ",");
+			int strength = atoi(strtok(nullptr, ","));
+			int cellid = atoi(strtok(nullptr, ","));
+			unsigned char direction = (unsigned char)((atoi(strtok(nullptr, ",")) + 8) & -16);
+			char* mission = strtok(nullptr, ",");
+			char* trigger = strtok(nullptr, ",");
+			_strlwr(name);
+			if (UnitType::UnitMapRA.count(name))
+			{
+				Unit* a = new Unit;
+				a->type = UnitType::UnitMapRA[name];
 				a->OccupyMask = a->type->OccupyMask;
 				a->Width = a->type->Width;
 				a->Height = a->type->Height;
@@ -605,7 +635,7 @@ void Map::Load(const char* path)
 			char* trigger = strtok(nullptr, ",");
 			if (TerrainType::TerrainMapTD.count(name))
 			{
-				Terrain *t = new Terrain;
+				Terrain* t = new Terrain;
 				t->type = TerrainType::TerrainMapTD[name];
 				t->trigger = _strdup(trigger);
 				t->OccupyMask = t->type->OccupyMask;
@@ -642,6 +672,35 @@ void Map::Load(const char* path)
 				a->strength = strength;
 				a->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
 				a->mission = mission;
+				a->OverlapBounds = a->type->OverlapBounds;
+				technos->Add(cellid, a);
+			}
+		}
+		for (int i = 0; i < ini.Entry_Count("Units"); i++)
+		{
+			const char* cell = ini.Get_Entry("Units", i);
+			char unit[200];
+			ini.Get_String("Units", cell, nullptr, unit, 200);
+			char* house = strtok(unit, ",");
+			char* name = strtok(nullptr, ",");
+			int strength = atoi(strtok(nullptr, ","));
+			int cellid = atoi(strtok(nullptr, ","));
+			unsigned char direction = (unsigned char)((atoi(strtok(nullptr, ",")) + 8) & -16);
+			char* mission = strtok(nullptr, ",");
+			char* trigger = strtok(nullptr, ",");
+			_strlwr(name);
+			if (UnitType::UnitMapTD.count(name))
+			{
+				Unit* a = new Unit;
+				a->type = UnitType::UnitMapTD[name];
+				a->OccupyMask = a->type->OccupyMask;
+				a->Width = a->type->Width;
+				a->Height = a->type->Height;
+				a->house = HouseType::HouseMapTD[house];
+				a->strength = strength;
+				a->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
+				a->mission = mission;
+				a->trigger = trigger;
 				a->OverlapBounds = a->type->OverlapBounds;
 				technos->Add(cellid, a);
 			}
@@ -956,7 +1015,7 @@ void Map::Init()
 {
 	if (isra)
 	{
-		for (TemplateType *i : TemplateType::PointersRA)
+		for (TemplateType* i : TemplateType::PointersRA)
 		{
 			if (i)
 			{
@@ -987,6 +1046,10 @@ void Map::Init()
 		{
 			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
 		}
+		for (std::pair<std::string, UnitType*>i : UnitType::UnitMapRA)
+		{
+			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
+		}
 	}
 	else
 	{
@@ -1014,6 +1077,10 @@ void Map::Init()
 			i.second->Init(isra, from(HouseType::HouseMapTD).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
 		}
 		for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapTD)
+		{
+			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
+		}
+		for (std::pair<std::string, UnitType*>i : UnitType::UnitMapTD)
 		{
 			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
 		}
@@ -1053,6 +1120,10 @@ void Map::Free()
 	{
 		i.second->Free();
 	}
+	for (std::pair<std::string, UnitType*>i : UnitType::UnitMapRA)
+	{
+		i.second->Free();
+	}
 	for (TemplateType* i : TemplateType::PointersTD)
 	{
 		if (i)
@@ -1077,6 +1148,10 @@ void Map::Free()
 		i.second->Free();
 	}
 	for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapTD)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, UnitType*>i : UnitType::UnitMapTD)
 	{
 		i.second->Free();
 	}

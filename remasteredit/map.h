@@ -11,6 +11,7 @@ class HouseType;
 class Map;
 class AircraftType;
 class VesselType;
+class UnitType;
 inline std::set<Gdiplus::Point> GetPoints(Gdiplus::Rect rectangle)
 {
 	std::set<Gdiplus::Point> p;
@@ -634,10 +635,10 @@ public:
 	{
 	}
 };
-class Unit : public Occupier, public Overlapper
+class UnitBase : public Occupier, public Overlapper
 {
 };
-class Aircraft : public Unit
+class Aircraft : public UnitBase
 {
 public:
 	const AircraftType* type;
@@ -649,7 +650,7 @@ public:
 	{
 	}
 };
-class Vessel : public Unit
+class Vessel : public UnitBase
 {
 public:
 	const VesselType* type;
@@ -659,6 +660,19 @@ public:
 	std::string mission;
 	std::string trigger;
 	Vessel() : type(nullptr), strength(0), house(nullptr), trigger("None")
+	{
+	}
+};
+class Unit : public UnitBase
+{
+public:
+	const UnitType* type;
+	HouseType* house;
+	int strength;
+	DirectionType direction;
+	std::string mission;
+	std::string trigger;
+	Unit() : type(nullptr), strength(0), house(nullptr), trigger("None")
 	{
 	}
 };
