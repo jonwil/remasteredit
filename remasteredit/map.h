@@ -12,6 +12,7 @@ class Map;
 class AircraftType;
 class VesselType;
 class UnitType;
+class InfantryType;
 inline std::set<Gdiplus::Point> GetPoints(Gdiplus::Rect rectangle)
 {
 	std::set<Gdiplus::Point> p;
@@ -674,6 +675,48 @@ public:
 	std::string trigger;
 	Unit() : type(nullptr), strength(0), house(nullptr), trigger("None")
 	{
+	}
+};
+class InfantryGroup;
+class Infantry
+{
+public:
+	InfantryType* type;
+	HouseType* house;
+	int strength;
+	DirectionType direction;
+	std::string mission;
+	std::string trigger;
+	InfantryGroup* group;
+	Infantry() : type(nullptr), strength(0), house(nullptr), trigger("None"), group(nullptr)
+	{
+	}
+};
+class InfantryGroup : public Occupier, public Overlapper
+{
+public:
+	Infantry *infantry[5];
+	InfantryGroup()
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			infantry[i] = 0;
+		}
+		OverlapBounds = Gdiplus::Rect(-1, -1, 3, 3);
+		static bool mask[1] = { true };
+		Width = 1;
+		Height = 1;
+		OccupyMask = mask;
+	}
+	~InfantryGroup()
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			if (infantry[i])
+			{
+				delete infantry[i];
+			}
+		}
 	}
 };
 class Map

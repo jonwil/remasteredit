@@ -129,6 +129,9 @@
     <ClCompile Include="unittype.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="infantrytype.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AircraftType.h">

@@ -11,6 +11,7 @@
 #include "AircraftType.h"
 #include "vesseltype.h"
 #include "unittype.h"
+#include "infantrytype.h"
 #include "INI.H"
 #include "RAWFILE.H"
 #include "XSTRAW.H"
@@ -400,6 +401,42 @@ void Map::Load(const char* path)
 				technos->Add(cellid, a);
 			}
 		}
+		for (int i = 0; i < ini.Entry_Count("INFANTRY"); i++)
+		{
+			const char* cell = ini.Get_Entry("INFANTRY", i);
+			char aircraft[200];
+			ini.Get_String("INFANTRY", cell, nullptr, aircraft, 200);
+			char* house = strtok(aircraft, ",");
+			char* name = strtok(nullptr, ",");
+			int strength = atoi(strtok(nullptr, ","));
+			int cellid = atoi(strtok(nullptr, ","));
+			int stopping = atoi(strtok(nullptr, ","));
+			char* mission = strtok(nullptr, ",");
+			unsigned char direction = (unsigned char)((atoi(strtok(nullptr, ",")) + 8) & -16);
+			char* trigger = strtok(nullptr, ",");
+			_strlwr(name);
+			if (InfantryType::InfantryMapRA.count(name))
+			{
+				Occupier* o = technos->Get(cellid);
+				InfantryGroup* group = dynamic_cast<InfantryGroup *>(o);
+				if (!group && !o)
+				{
+					group = new InfantryGroup();
+					technos->Add(cellid, group);
+				}
+				if (group)
+				{
+					group->infantry[stopping] = new Infantry;
+					group->infantry[stopping]->group = group;
+					group->infantry[stopping]->type = InfantryType::InfantryMapRA[name];
+					group->infantry[stopping]->house = HouseType::HouseMapRA[house];
+					group->infantry[stopping]->strength = strength;
+					group->infantry[stopping]->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
+					group->infantry[stopping]->mission = mission;
+					group->infantry[stopping]->trigger = trigger;
+				}
+			}
+		}
 		for (int i = 0; i < ini.Entry_Count("SHIPS"); i++)
 		{
 			const char* cell = ini.Get_Entry("SHIPS", i);
@@ -674,6 +711,42 @@ void Map::Load(const char* path)
 				a->mission = mission;
 				a->OverlapBounds = a->type->OverlapBounds;
 				technos->Add(cellid, a);
+			}
+		}
+		for (int i = 0; i < ini.Entry_Count("Infantry"); i++)
+		{
+			const char* cell = ini.Get_Entry("Infantry", i);
+			char aircraft[200];
+			ini.Get_String("Infantry", cell, nullptr, aircraft, 200);
+			char* house = strtok(aircraft, ",");
+			char* name = strtok(nullptr, ",");
+			int strength = atoi(strtok(nullptr, ","));
+			int cellid = atoi(strtok(nullptr, ","));
+			int stopping = atoi(strtok(nullptr, ","));
+			char* mission = strtok(nullptr, ",");
+			unsigned char direction = (unsigned char)((atoi(strtok(nullptr, ",")) + 8) & -16);
+			char* trigger = strtok(nullptr, ",");
+			_strlwr(name);
+			if (InfantryType::InfantryMapTD.count(name))
+			{
+				Occupier* o = technos->Get(cellid);
+				InfantryGroup* group = dynamic_cast<InfantryGroup*>(o);
+				if (!group && !o)
+				{
+					group = new InfantryGroup();
+					technos->Add(cellid, group);
+				}
+				if (group)
+				{
+					group->infantry[stopping] = new Infantry;
+					group->infantry[stopping]->group = group;
+					group->infantry[stopping]->type = InfantryType::InfantryMapTD[name];
+					group->infantry[stopping]->house = HouseType::HouseMapTD[house];
+					group->infantry[stopping]->strength = strength;
+					group->infantry[stopping]->direction = from(DirectionType::Types).where([direction](DirectionType d) {return d.ID == direction; }).firstOrDefault();
+					group->infantry[stopping]->mission = mission;
+					group->infantry[stopping]->trigger = trigger;
+				}
 			}
 		}
 		for (int i = 0; i < ini.Entry_Count("Units"); i++)
@@ -1050,6 +1123,10 @@ void Map::Init()
 		{
 			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
 		}
+		for (std::pair<std::string, InfantryType*>i : InfantryType::InfantryMapRA)
+		{
+			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
+		}
 	}
 	else
 	{
@@ -1078,11 +1155,15 @@ void Map::Init()
 		}
 		for (std::pair<std::string, AircraftType*>i : AircraftType::AircraftMapTD)
 		{
-			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
+			i.second->Init(isra, from(HouseType::HouseMapTD).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
 		}
 		for (std::pair<std::string, UnitType*>i : UnitType::UnitMapTD)
 		{
-			i.second->Init(isra, from(HouseType::HouseMapRA).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
+			i.second->Init(isra, from(HouseType::HouseMapTD).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
+		}
+		for (std::pair<std::string, InfantryType*>i : InfantryType::InfantryMapTD)
+		{
+			i.second->Init(isra, from(HouseType::HouseMapTD).where([i](std::pair<std::string, HouseType*> h) {return _stricmp(h.second->Name.c_str(), i.second->OwnerHouse.c_str()) == 0; }).firstOrDefault().second, from(DirectionType::Types).where([](DirectionType d) {return d.Facing == FACING_N; }).first());
 		}
 	}
 }
@@ -1124,6 +1205,10 @@ void Map::Free()
 	{
 		i.second->Free();
 	}
+	for (std::pair<std::string, InfantryType*>i : InfantryType::InfantryMapRA)
+	{
+		i.second->Free();
+	}
 	for (TemplateType* i : TemplateType::PointersTD)
 	{
 		if (i)
@@ -1152,6 +1237,10 @@ void Map::Free()
 		i.second->Free();
 	}
 	for (std::pair<std::string, UnitType*>i : UnitType::UnitMapTD)
+	{
+		i.second->Free();
+	}
+	for (std::pair<std::string, InfantryType*>i : InfantryType::InfantryMapTD)
 	{
 		i.second->Free();
 	}

@@ -107,6 +107,7 @@
     <ClCompile Include="..\utils\XSTRAW.CPP" />
     <ClCompile Include="aircrafttype.cpp" />
     <ClCompile Include="housetype.cpp" />
+    <ClCompile Include="infantrytype.cpp" />
     <ClCompile Include="mainwindow.cpp" />
     <ClCompile Include="map.cpp" />
     <ClCompile Include="mappanel.cpp" />

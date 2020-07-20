@@ -20,4 +20,5 @@ public:
 	static std::pair<Gdiplus::Rect, RenderFunc> Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, Aircraft* unit);
 	static std::pair<Gdiplus::Rect, RenderFunc> Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, Vessel* unit);
 	static std::pair<Gdiplus::Rect, RenderFunc> Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, Unit* unit);
+	static std::pair<Gdiplus::Rect, RenderFunc> Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, Infantry* unit, InfantryStoppingType stopping);
 };

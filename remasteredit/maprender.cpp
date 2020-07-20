@@ -12,6 +12,7 @@
 #include "AircraftType.h"
 #include "vesseltype.h"
 #include "unittype.h"
+#include "infantrytype.h"
 #include "boolinq.h"
 static unsigned short _stretch[FACING_COUNT] = { 8, 9, 10, 9, 8, 9, 10, 9 };
 static int Facing16[256] =
@@ -723,6 +724,24 @@ void MapRender::Render(Map* map, Gdiplus::Graphics* graphics, const std::set<Gdi
 			if (locations.empty() || locations.count(topLeft))
 			{
 				list.push_back(Render(map->isra, topLeft, tileSize, tileScale, building));
+			}
+		}
+	}
+	if ((layers & MAPLAYER_INFANTRY) != 0)
+	{
+		for (auto i : map->technos->GetOccupiers<InfantryGroup>())
+		{
+			Gdiplus::Point topLeft = i.second;
+			InfantryGroup* group = i.first;
+			if (locations.empty() || locations.count(topLeft))
+			{
+				for (int j = 0; j < 5; j++)
+				{
+					if (group->infantry[j])
+					{
+						list.push_back(Render(map->isra, topLeft, tileSize, group->infantry[j], static_cast<InfantryStoppingType>(j)));
+					}
+				}
 			}
 		}
 	}
@@ -1717,6 +1736,54 @@ std::pair<Gdiplus::Rect, RenderFunc> MapRender::Render(bool isra, Gdiplus::Point
 					Gdiplus::Rect turretBounds(pt - Gdiplus::Size(turretSize.Width / 2, turretSize.Height / 2), turretSize);
 					graphics->DrawImage(turrettile->Image, turretBounds, 0, 0, turrettile->Image->GetWidth(), turrettile->Image->GetHeight(), Gdiplus::UnitPixel);
 				}
+			});
+	}
+	return std::make_pair(Gdiplus::Rect(), [](Gdiplus::Graphics*, Gdiplus::Rect) {});
+}
+
+std::pair<Gdiplus::Rect, RenderFunc> MapRender::Render(bool isra, Gdiplus::Point topLeft, Gdiplus::Size tileSize, Infantry* unit, InfantryStoppingType stopping)
+{
+	Gdiplus::Rect renderBounds;
+	TeamColor* ucolor;
+	int icon = HumanShape[Facing32[unit->direction.ID]];
+	if (isra)
+	{
+		ucolor = TheTeamColorManagerRA->GetColor(unit->house->UnitColor.c_str());
+	}
+	else
+	{
+		ucolor = TheTeamColorManagerTD->GetColor(unit->house->UnitColor.c_str());
+	}
+	Tile* tile = nullptr;
+	if (TheTilesetManager->GetTeamColorTileData(unit->type->Name.c_str(), icon, ucolor, tile))
+	{
+		Gdiplus::Point pt = Gdiplus::Point(topLeft.X * tileSize.Width, topLeft.Y * tileSize.Height) + Gdiplus::Size(tileSize.Width / 2, tileSize.Height / 2);
+		Gdiplus::Point empty(0,0);
+		switch (stopping)
+		{
+		case STOPPING_UPPERLEFT:
+			empty.X = -tileSize.Width / 4;
+			empty.Y = -tileSize.Height / 4;
+			break;
+		case STOPPING_UPPERRIGHT:
+			empty.X = tileSize.Width / 4;
+			empty.Y = -tileSize.Height / 4;
+			break;
+		case STOPPING_LOWERLEFT:
+			empty.X = -tileSize.Width / 4;
+			empty.Y = tileSize.Height / 4;
+			break;
+		case STOPPING_LOWERRIGHT:
+			empty.X = tileSize.Width / 4;
+			empty.Y = tileSize.Height / 4;
+			break;
+		}
+		pt.X += empty.X;
+		pt.Y += empty.Y;
+		renderBounds = Gdiplus::Rect(pt - Gdiplus::Size(unit->type->RenderSize.Width / 2, unit->type->RenderSize.Height / 2), unit->type->RenderSize);
+		return std::make_pair(renderBounds, [tile, tileSize, topLeft](Gdiplus::Graphics* graphics, Gdiplus::Rect renderBounds)
+			{
+				graphics->DrawImage(tile->Image, renderBounds, 0, 0, tile->Image->GetWidth(), tile->Image->GetHeight(), Gdiplus::UnitPixel);
 			});
 	}
 	return std::make_pair(Gdiplus::Rect(), [](Gdiplus::Graphics*, Gdiplus::Rect) {});

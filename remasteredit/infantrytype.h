@@ -1,4 +1,6 @@
 #pragma once
+class HouseType;
+struct DirectionType;
 enum InfantryTypeTD {
 	INFANTRYTD_NONE = -1,
 	INFANTRYTD_E1,
@@ -54,4 +56,37 @@ enum InfantryTypeRA {
 	INFANTRYRA_MECHANIC,
 	INFANTRYRA_COUNT,
 	INFANTRYRA_FIRST = 0
+};
+class InfantryType
+{
+public:
+	char ID;
+	std::string Name;
+	std::string TextId;
+	std::string OwnerHouse;
+	Gdiplus::Size RenderSize;
+	Gdiplus::Bitmap* Thumbnail;
+	InfantryType(char id, const char* name, const char* textid, const char* ownerhouse, bool isra) : ID(id), Name(name), TextId(textid), OwnerHouse(ownerhouse), Thumbnail(nullptr)
+	{
+		static bool mask[1] = { true };
+		if (isra)
+		{
+			InfantryMapRA[Name] = this;
+		}
+		else
+		{
+			InfantryMapTD[Name] = this;
+		}
+	}
+	void Free()
+	{
+		if (Thumbnail)
+		{
+			delete[] Thumbnail;
+			Thumbnail = nullptr;
+		}
+	}
+	static std::map<std::string, InfantryType*> InfantryMapTD;
+	static std::map<std::string, InfantryType*> InfantryMapRA;
+	void Init(bool isra, HouseType* house, DirectionType direction);
 };
