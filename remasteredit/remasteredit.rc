@@ -64,6 +64,47 @@ END
 /////////////////////////////////////////////////////////////////////////////
 
 
+/////////////////////////////////////////////////////////////////////////////
+// English (Australia) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENA)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_AUS
+#pragma code_page(1252)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Toolbar
+//
+
+IDR_TOOLBAR TOOLBAR 16, 15
+BEGIN
+    BUTTON      ID_MAP_TOOL
+    BUTTON      ID_SMUDGE_TOOL
+    BUTTON      ID_OVERLAY_TOOL
+    BUTTON      ID_TERRAIN_TOOL
+    BUTTON      ID_INFANTRY_TOOL
+    BUTTON      ID_UNIT_TOOL
+    BUTTON      ID_AIRCRAFT_TOOL
+    BUTTON      ID_VESSEL_TOOL
+    BUTTON      ID_STRUCTURE_TOOL
+    BUTTON      ID_RESOURCES_TOOL
+    BUTTON      ID_WALLS_TOOL
+    BUTTON      ID_WAYPOINTS_TOOL
+    BUTTON      ID_CELL_TRIGGERS_TOOL
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDR_TOOLBAR             BITMAP                  "toolbar1.bmp"
+
+#endif    // English (Australia) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
 
 #ifndef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////

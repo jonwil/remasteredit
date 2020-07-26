@@ -44,10 +44,10 @@ public:
 	bool vscroll;
 	Map* map;
 	BYTE* data;
-	MapPanel(HINSTANCE hInstance, DWORD width, DWORD height, HWND parent) : updatingCamera(false), lastScrollPosition(0, 0), referencePositionsSet(false), mapToViewTransform(nullptr), viewToPageTransform(nullptr), compositeTransform(nullptr), invCompositeTransform(nullptr), fullInvalidation(false), mapImage(nullptr), minZoom(1), maxZoom(8), zoomStep(1), zoom(1), clientWidth(width), clientHeight(height), AutoScrollPosition(0, 0), hscroll(false), vscroll(false), map(nullptr), data(nullptr)
+	MapPanel(HINSTANCE hInstance, DWORD x, DWORD y, DWORD width, DWORD height, HWND parent) : updatingCamera(false), lastScrollPosition(0, 0), referencePositionsSet(false), mapToViewTransform(nullptr), viewToPageTransform(nullptr), compositeTransform(nullptr), invCompositeTransform(nullptr), fullInvalidation(false), mapImage(nullptr), minZoom(1), maxZoom(8), zoomStep(1), zoom(1), clientWidth(width), clientHeight(height), AutoScrollPosition(0, 0), hscroll(false), vscroll(false), map(nullptr), data(nullptr)
 	{
 		panel = this;
-		Create(0l, "ScrollWindow", nullptr, WS_CHILDWINDOW | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_HSCROLL | WS_VSCROLL, 0, 0, width, height, parent, nullptr, hInstance);
+		Create(0l, "ScrollWindow", nullptr, WS_CHILDWINDOW | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_HSCROLL | WS_VSCROLL, x, y, width, height, parent, nullptr, hInstance);
 		ShowScrollBar(window, SB_HORZ, hscroll);
 		ShowScrollBar(window, SB_VERT, vscroll);
 	}
@@ -62,6 +62,7 @@ public:
 	Gdiplus::Point ClientToMap(Gdiplus::Point point);
 	Gdiplus::Point ClientToMap(Gdiplus::Size size);
 	Gdiplus::Rect ClientToMap(Gdiplus::Rect rectangle);
+	void OnMouseMove(Gdiplus::Point p);
 	void UpdateCamera();
 	void RecalculateTransforms();
 	void InvalidateScroll();

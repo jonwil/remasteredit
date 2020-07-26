@@ -118,12 +118,15 @@
     <ClCompile Include="RAMFILE.CPP" />
     <ClCompile Include="remasteredit.cpp" />
     <ClCompile Include="smudgetype.cpp" />
+    <ClCompile Include="statusbar.cpp" />
     <ClCompile Include="structtype.cpp" />
     <ClCompile Include="teamcolor.cpp" />
     <ClCompile Include="templatetype.cpp" />
     <ClCompile Include="TerrainType.cpp" />
     <ClCompile Include="texman.cpp" />
+    <ClCompile Include="textman.cpp" />
     <ClCompile Include="tileset.cpp" />
+    <ClCompile Include="toolbar.cpp" />
     <ClCompile Include="unittype.cpp" />
     <ClCompile Include="vesseltype.cpp" />
     <ClCompile Include="window.cpp" />
@@ -141,19 +144,25 @@
     <ClInclude Include="overlaytype.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="smudgetype.h" />
+    <ClInclude Include="statusbar.h" />
     <ClInclude Include="structtype.h" />
     <ClInclude Include="teamcolor.h" />
     <ClInclude Include="TemplateType.h" />
     <ClInclude Include="TerrainType.h" />
     <ClInclude Include="texman.h" />
+    <ClInclude Include="textman.h" />
     <ClInclude Include="theatertype.h" />
     <ClInclude Include="tileset.h" />
+    <ClInclude Include="toolbar.h" />
     <ClInclude Include="unittype.h" />
     <ClInclude Include="vesseltype.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="remasteredit.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="toolbar1.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

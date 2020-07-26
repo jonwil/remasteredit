@@ -718,6 +718,7 @@ public:
 			}
 		}
 	}
+	static std::vector<InfantryStoppingType> ClosestStoppingTypes(Gdiplus::Point subPixel);
 };
 class Map
 {

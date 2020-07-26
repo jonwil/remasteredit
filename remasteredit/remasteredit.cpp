@@ -12,6 +12,7 @@
 #include "resource.h"
 #include "mainwindow.h"
 #include "mappanel.h"
+#include "textman.h"
 int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
 	UINT  num = 0;          // number of image encoders
@@ -77,13 +78,16 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	InitTeamColors();
 	InitTextures();
 	InitTilesets();
+	InitText();
 	FreeImage_Initialise();
 	MainWindow wnd(hInstance);
 	RECT r;
 	GetClientRect(wnd.window, &r);
 	int width = r.right - r.left;
 	int height = r.bottom - r.top;
-	MapPanel panel(hInstance,width,height,wnd.window);
+	height -= wnd.barheight;
+	height -= wnd.sbheight;
+	MapPanel panel(hInstance,0,wnd.barheight,width,height,wnd.window);
 	ShowWindow(wnd.window, SW_MAXIMIZE);
 	UpdateWindow(wnd.window);
 	UpdateWindow(panel.window);
@@ -94,6 +98,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 		DispatchMessage(&msg);
 	}
 	FreeImage_DeInitialise();
+	ShutdownText();
 	ShutdownTilesets();
 	ShutdownTextures();
 	ShutdownTeamColors();

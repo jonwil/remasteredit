@@ -1245,3 +1245,15 @@ void Map::Free()
 		i.second->Free();
 	}
 }
+
+static Gdiplus::Point stoppingLocations[5]{ {12, 12}, {6, 6}, {18, 6}, {6, 18}, {18, 18} };
+
+std::vector<InfantryStoppingType> InfantryGroup::ClosestStoppingTypes(Gdiplus::Point subPixel)
+{
+	std::pair<InfantryStoppingType, float> array[5];
+	for (int i = 0; i < 5; i++)
+	{
+		array[i] = std::make_pair((InfantryStoppingType)i, Vector2(static_cast<float>(subPixel.X - stoppingLocations[i].X), static_cast<float>(subPixel.Y - stoppingLocations[i].Y)).LengthSquared());
+	}
+	return from(array).orderBy([](std::pair<InfantryStoppingType, float> p) {return p.second; }).select([](std::pair<InfantryStoppingType, float> p) {return p.first; }).toStdVector();
+}

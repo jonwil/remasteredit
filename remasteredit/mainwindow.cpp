@@ -2,6 +2,7 @@
 #include "mainwindow.h"
 #include "mappanel.h"
 #include <commdlg.h>
+MainWindow* MainWindow::mainwindow;
 bool GetOpenFile(char* buf, const char* filter, const char* dir, HWND parent, const char* title)
 {
 	OPENFILENAME of;
@@ -58,10 +59,23 @@ LRESULT MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		{
 			if (MapPanel::panel)
 			{
-				WORD cx = LOWORD(lParam);
-				WORD cy = HIWORD(lParam);
-				SetWindowPos(MapPanel::panel->window, nullptr, 0, 0, cx, cy, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER);
-				InvalidateRect(MapPanel::panel->window, nullptr, TRUE);
+				if (toolbar->hWndToolBar && statusbar->hWndStatusBar)
+				{
+					WORD cx = LOWORD(lParam);
+					WORD cy = HIWORD(lParam);
+					RECT r;
+					GetClientRect(toolbar->hWndToolBar, &r);
+					barheight = r.bottom - r.top;
+					RECT r2;
+					GetClientRect(statusbar->hWndStatusBar, &r2);
+					sbheight = r2.bottom - r2.top;
+					int clientwidth = cx;
+					int clientheight = cy - barheight - sbheight;
+					SetWindowPos(MapPanel::panel->window, nullptr, 0, barheight, clientwidth, clientheight, SWP_NOZORDER);
+					InvalidateRect(MapPanel::panel->window, nullptr, TRUE);
+					toolbar->OnSize();
+					statusbar->OnSize();
+				}
 			}
 		}
 	return DefWindowProc(hWnd, message, wParam, lParam);

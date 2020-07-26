@@ -2,6 +2,19 @@
 #include "mappanel.h"
 #include "map.h"
 #include "maprender.h"
+#include "mainwindow.h"
+#include "TemplateType.h"
+#include "smudgetype.h"
+#include "overlaytype.h"
+#include "terraintype.h"
+#include "infantrytype.h"
+#include "structtype.h"
+#include "unittype.h"
+#include "vesseltype.h"
+#include "AircraftType.h"
+#include "textman.h"
+#include <windowsx.h>
+#include <sstream>
 template <typename T> int sgn(T val)
 {
 	return (T(0) < val) - (val < T(0));
@@ -58,6 +71,12 @@ LRESULT MapPanel::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			float delta = GET_WHEEL_DELTA_WPARAM(wParam);
 			SetZoom(zoom + zoomStep * sgn(delta));
+		}
+		break;
+	case WM_MOUSEMOVE:
+		{
+			Gdiplus::Point p(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			OnMouseMove(p);
 		}
 		break;
 	case WM_ERASEBKGND:
@@ -539,7 +558,14 @@ void MapPanel::FileOpen(const char* fname)
 
 void MapPanel::Invalidate()
 {
-	InvalidateRect(window, nullptr, FALSE);
+	if (AutoScrollMinSize.Width && AutoScrollMinSize.Height)
+	{
+		InvalidateRect(window, nullptr, FALSE);
+	}
+	else
+	{
+		InvalidateRect(window, nullptr, TRUE);
+	}
 }
 
 void MapPanel::Invalidate(Map*)
@@ -644,4 +670,90 @@ void MapPanel::PreRender(RenderEventArgs e)
 
 void MapPanel::PostRender(RenderEventArgs e)
 {
+}
+
+void MapPanel::OnMouseMove(Gdiplus::Point p)
+{
+	if (!map)
+	{
+		return;
+	}
+	Gdiplus::Point point = ClientToMap(p);
+	Gdiplus::Point location(static_cast<int>(floor(static_cast<double>(point.X) / static_cast<double>(TileWidth))), static_cast<int>(floor(static_cast<double>(point.Y) / static_cast<double>(TileHeight))));
+	int cell;
+	if (map->metrics->GetCell(location, cell))
+	{
+		std::stringstream s;
+		s << "X = " << location.X << ", Y = " << location.Y << ", Cell = " << cell;
+		Template* t = map->templates->Get(cell);
+		if (t && t->type)
+		{
+			s << ", Template = " << t->type->Name << " (" << t->icon << ")";
+		}
+		Smudge* sm = map->smudges->Get(cell);
+		if (sm && sm->type)
+		{
+			s << ", Smudge = " << sm->type->Name;
+		}
+		Overlay* o = map->overlays->Get(cell);
+		if (o && o->type)
+		{
+			s << ", Overlay = " << TheTextManager->Get(o->type->TextId.c_str());
+		}
+		Occupier *oc = map->technos->Get(location);
+		if (oc)
+		{
+			Terrain* tr = dynamic_cast<Terrain*>(oc);
+			{
+				if (tr && tr->type)
+				{
+					s << ", Terrain = " << tr->type->Name.c_str();
+				}
+			}
+			InfantryGroup* i = dynamic_cast<InfantryGroup*>(oc);
+			{
+				if (i)
+				{
+					int num = InfantryGroup::ClosestStoppingTypes(Gdiplus::Point(point.X * 24 / TileWidth % 24, point.Y * 24 / TileHeight % 24))[0];
+					if (i->infantry[num])
+					{
+						s << ", Infantry = " << TheTextManager->Get(i->infantry[num]->type->TextId.c_str());
+					}
+				}
+			}
+			Unit* u = dynamic_cast<Unit*>(oc);
+			{
+				if (u && u->type)
+				{
+					s << ", Unit = " << TheTextManager->Get(u->type->TextId.c_str());
+				}
+			}
+			Vessel* v = dynamic_cast<Vessel*>(oc);
+			{
+				if (v && v->type)
+				{
+					s << ", Vessel = " << TheTextManager->Get(v->type->TextId.c_str());
+				}
+			}
+			Aircraft* a = dynamic_cast<Aircraft*>(oc);
+			{
+				if (a && a->type)
+				{
+					s << ", Aircraft = " << TheTextManager->Get(a->type->TextId.c_str());
+				}
+			}
+			Structure* st = dynamic_cast<Structure*>(oc);
+			{
+				if (st && st->type)
+				{
+					s << ", Structure = " << TheTextManager->Get(st->type->TextId.c_str());
+				}
+			}
+		}
+		MainWindow::mainwindow->statusbar->SetText(1, s.str().c_str());
+	}
+	else
+	{
+		MainWindow::mainwindow->statusbar->SetText(1, "");
+	}
 }

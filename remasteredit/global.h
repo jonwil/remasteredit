@@ -63,3 +63,14 @@ namespace std {
 		}
 	};
 }
+
+template <class Key, class Value, class Compare, class Allocator> bool TryGetValue(std::map<Key, Value, Compare, Allocator> const& theMap, typename std::map<Key, Value, Compare, Allocator>::key_type const& key, typename std::map<Key, Value, Compare, Allocator>::mapped_type& value)
+{
+	auto it = theMap.find(key);
+	if (it == theMap.end())
+	{
+		return false;
+	}
+	value = it->second;
+	return true;
+}
