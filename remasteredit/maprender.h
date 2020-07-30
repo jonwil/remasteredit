@@ -1,5 +1,4 @@
 #pragma once
-#include <functional>
 class Map;
 class Smudge;
 class Overlay;

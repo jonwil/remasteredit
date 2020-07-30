@@ -9,6 +9,8 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <functional>
+#include <CommCtrl.h>
 constexpr int TileScale = 2;
 constexpr int TileWidth = 128 / TileScale;
 constexpr int TileHeight = 128 / TileScale;
@@ -43,13 +45,14 @@ enum InfantryStoppingType
 	STOPPING_LOWERLEFT,
 	STOPPING_LOWERRIGHT
 };
+
 namespace std {
 	template<>
 	struct less<Gdiplus::Point>
 	{
 		bool operator()(const Gdiplus::Point& p1, const Gdiplus::Point& p2) const
 		{
-			return (p1.Y * 128 + p1.X) < (p2.Y * 128 + p2.X);
+			return std::tie(p1.X, p1.Y) < std::tie(p2.X, p2.Y);
 		}
 	};
 }
@@ -59,12 +62,12 @@ namespace std {
 	{
 		bool operator()(const Gdiplus::Rect& p1, const Gdiplus::Rect& p2) const
 		{
-			return (p1.Y * 128 + p1.X + 256 * p1.Width + 512 * p1.Height) < (p2.Y * 128 + p2.X + 256 * p2.Width + 512 * p2.Height);
+			return std::tie(p1.X, p1.Y, p1.Width, p1.Height) < std::tie(p2.X, p2.Y, p2.Width, p2.Height);
 		}
 	};
 }
 
-template <class Key, class Value, class Compare, class Allocator> bool TryGetValue(std::map<Key, Value, Compare, Allocator> const& theMap, typename std::map<Key, Value, Compare, Allocator>::key_type const& key, typename std::map<Key, Value, Compare, Allocator>::mapped_type& value)
+template <class Key, class Value, class Compare, class Allocator> inline bool TryGetValue(std::map<Key, Value, Compare, Allocator> const& theMap, typename std::map<Key, Value, Compare, Allocator>::key_type const& key, typename std::map<Key, Value, Compare, Allocator>::mapped_type& value)
 {
 	auto it = theMap.find(key);
 	if (it == theMap.end())
@@ -73,4 +76,35 @@ template <class Key, class Value, class Compare, class Allocator> bool TryGetVal
 	}
 	value = it->second;
 	return true;
+}
+
+template <class c> inline bool Any(c const &container)
+{
+	return container.size() != 0;
+}
+
+template <class c, class f> inline bool Any(c const &container, f func)
+{
+	for (auto i : container)
+	{
+		if (func(i))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+inline Gdiplus::Color FromArgb(BYTE alpha, Gdiplus::Color basecolor)
+{
+	return Gdiplus::Color(alpha, basecolor.GetR(), basecolor.GetG(), basecolor.GetB());
+}
+
+inline bool IsKeyDown(int key)
+{
+	if (GetKeyState(key) < 0)
+	{
+		return true;
+	}
+	return false;
 }

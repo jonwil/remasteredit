@@ -2,6 +2,20 @@
 #include "window.h"
 class Map;
 class Overlapper;
+class Tool;
+class TemplateTool;
+class MapPanel;
+class Widget
+{
+public:
+	virtual void OnMouseDown(MapPanel* /*panel*/, int /*Button*/, Gdiplus::Point /*Location*/) {}
+	virtual void OnMouseDoubleClick() {}
+	virtual void OnMouseMove(Gdiplus::Point /*Location*/) {}
+	virtual void OnMouseUp(int /*Button*/) {}
+	virtual void OnKeyDown(int /*KeyCode*/) {}
+	virtual void OnKeyUp(int /*KeyCode*/) {}
+	virtual void OnSelChanged() {}
+};
 class RenderEventArgs
 {
 public:
@@ -18,6 +32,15 @@ public:
 class MapPanel : public Window
 {
 public:
+	void (Tool::* OnPreRender)(RenderEventArgs e);
+	void (Tool::* OnPostRender)(RenderEventArgs e);
+	void (TemplateTool::* OnTemplatePostRender)(RenderEventArgs e);
+	std::set<Widget*> OnMouseDown;
+	std::set<Widget*> OnMouseDoubleClick;
+	std::set<Widget*> OnMouseMove;
+	std::set<Widget*> OnMouseUp;
+	std::set<Widget*> OnKeyDown;
+	std::set<Widget*> OnKeyUp;
 	bool updatingCamera;
 	Gdiplus::Rect cameraBounds;
 	Gdiplus::Point lastScrollPosition;
@@ -35,6 +58,7 @@ public:
 	int maxZoom;
 	int zoomStep;
 	int zoom;
+	bool zoomed;
 	int clientWidth;
 	int clientHeight;
 	Gdiplus::Size AutoScrollMinSize;
@@ -44,16 +68,17 @@ public:
 	bool vscroll;
 	Map* map;
 	BYTE* data;
-	MapPanel(HINSTANCE hInstance, DWORD x, DWORD y, DWORD width, DWORD height, HWND parent) : updatingCamera(false), lastScrollPosition(0, 0), referencePositionsSet(false), mapToViewTransform(nullptr), viewToPageTransform(nullptr), compositeTransform(nullptr), invCompositeTransform(nullptr), fullInvalidation(false), mapImage(nullptr), minZoom(1), maxZoom(8), zoomStep(1), zoom(1), clientWidth(width), clientHeight(height), AutoScrollPosition(0, 0), hscroll(false), vscroll(false), map(nullptr), data(nullptr)
+	Tool* currentTool;
+	TemplateTool* currentTemplateTool;
+	bool focusOnMouseEnter;
+	MapPanel(HINSTANCE hInstance, DWORD x, DWORD y, DWORD width, DWORD height, HWND parent) : updatingCamera(false), lastScrollPosition(0, 0), referencePositionsSet(false), mapToViewTransform(nullptr), viewToPageTransform(nullptr), compositeTransform(nullptr), invCompositeTransform(nullptr), fullInvalidation(false), mapImage(nullptr), minZoom(1), maxZoom(8), zoomStep(1), zoom(1), clientWidth(width), clientHeight(height), AutoScrollPosition(0, 0), hscroll(false), vscroll(false), map(nullptr), data(nullptr), OnPreRender(nullptr), OnPostRender(nullptr), zoomed(false), focusOnMouseEnter(false)
 	{
-		panel = this;
 		Create(0l, "ScrollWindow", nullptr, WS_CHILDWINDOW | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_HSCROLL | WS_VSCROLL, x, y, width, height, parent, nullptr, hInstance);
 		ShowScrollBar(window, SB_HORZ, hscroll);
 		ShowScrollBar(window, SB_VERT, vscroll);
 	}
 	~MapPanel()
 	{
-		panel = nullptr;
 	}
 	LRESULT WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) override;
 	Gdiplus::Point MapToClient(Gdiplus::Point point);
@@ -62,7 +87,7 @@ public:
 	Gdiplus::Point ClientToMap(Gdiplus::Point point);
 	Gdiplus::Point ClientToMap(Gdiplus::Size size);
 	Gdiplus::Rect ClientToMap(Gdiplus::Rect rectangle);
-	void OnMouseMove(Gdiplus::Point p);
+	void MouseMove(Gdiplus::Point p);
 	void UpdateCamera();
 	void RecalculateTransforms();
 	void InvalidateScroll();
@@ -74,7 +99,6 @@ public:
 	void SetMinZoom(int value);
 	void SetMaxZoom(int value);
 	int GetScrollPosition(int bar, UINT code);
-	static MapPanel* panel;
 	void FileOpen(const char* fname);
 	void Invalidate();
 	void Invalidate(Map* invalidateMap);
@@ -85,6 +109,6 @@ public:
 	void Invalidate(Map* invalidateMap, int cell);
 	void Invalidate(Map* invalidateMap, std::vector<int> cells);
 	void Invalidate(Map* invalidateMap, Overlapper *overlapper);
-	void PreRender(RenderEventArgs e);
-	void PostRender(RenderEventArgs e);
 };
+
+extern MapPanel* MainPanel;

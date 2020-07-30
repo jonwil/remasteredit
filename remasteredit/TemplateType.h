@@ -7,6 +7,26 @@ enum TemplateTypeFlag
 	TEMPLATETYPE_WATER = 4
 };
 
+enum TemplateGroup
+{
+	GROUP_CLEAR,
+	GROUP_WATER,
+	GROUP_SHORE,
+	GROUP_SLOPE,
+	GROUP_ROAD,
+	GROUP_BOULDER,
+	GROUP_BRUSH,
+	GROUP_PATCH,
+	GROUP_FORD,
+	GROUP_FALLS,
+	GROUP_RIVER,
+	GROUP_BRIDGE,
+	GROUP_FLOOR,
+	GROUP_WALL,
+	GROUP_XTRA,
+	GROUP_COUNT
+};
+
 enum TemplateTypeTD {
 	TEMPLATETD_CLEAR1,
 	TEMPLATETD_WATER,			// This must be the first non-clear template.
@@ -659,7 +679,8 @@ public:
 	Gdiplus::Bitmap* Thumbnail;
 	unsigned char Theater;
 	TemplateTypeFlag Flag;
-	TemplateType(unsigned short id, const char* name, unsigned char iconWidth, unsigned char iconHeight, unsigned char theater, TemplateTypeFlag flag) : ID(id), Name(name), IconWidth(iconWidth), IconHeight(iconHeight), Theater(theater), Flag(flag), IconMask(nullptr), Thumbnail(nullptr)
+	TemplateGroup Group;
+	TemplateType(unsigned short id, TemplateGroup group, const char* name, unsigned char iconWidth, unsigned char iconHeight, unsigned char theater, TemplateTypeFlag flag) : ID(id), Group(group), Name(name), IconWidth(iconWidth), IconHeight(iconHeight), Theater(theater), Flag(flag), IconMask(nullptr), Thumbnail(nullptr)
 	{
 	}
 	void Free()
@@ -675,7 +696,7 @@ public:
 			Thumbnail = nullptr;
 		}
 	}
-	static TemplateType * const PointersRA[TEMPLATERA_COUNT];
-	static TemplateType * const PointersTD[TEMPLATETD_COUNT];
+	static TemplateType * PointersRA[TEMPLATERA_COUNT];
+	static TemplateType * PointersTD[TEMPLATETD_COUNT];
 	void Init();
 };

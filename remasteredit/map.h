@@ -79,7 +79,7 @@ public:
 	void Set(int x, int y, T value)
 	{
 		int cell = (y * metrics->Width) + x;
-		if (!cells[cell] || cells[cell]->type != value->type || cells[cell]->icon != value->icon)
+		if (!cells[cell] || !value || cells[cell]->type != value->type || cells[cell]->icon != value->icon)
 		{
 			T oldValue = cells[cell];
 			cells[cell] = value;
@@ -150,15 +150,20 @@ public:
 		}
 		return Get(adjacent);
 	}
-	bool CopyTo(CellGrid<T> other)
+	bool CopyTo(CellGrid<T> *other)
 	{
-		if (metrics->Length != other.metrics->Length)
+		if (metrics->Length != other->metrics->Length)
 		{
 			return false;
 		}
 		for (int i = 0; i < metrics->Length; i++)
 		{
-			other.Set(i,Get(i));
+			T t = Get(i);
+			if (t)
+			{
+				T t2 = t->CopyTo();
+				other->Set(i, t2);
+			}
 		}
 		return true;
 	}
@@ -547,7 +552,12 @@ public:
 			auto other = from(overlappers).where([rectangleSet](std::pair<T, Gdiplus::Rect> x) {return from(rectangleSet).any([x](Gdiplus::Rect y) {return !!x.second.IntersectsWith(y); }); }).select([](std::pair<T, Gdiplus::Rect> r) {return r.second; }).toStdSet();
 			UnionWith(rectangleSet, other);
 		} while (rectangleSet.size() != count);
-		std::set<Gdiplus::Point> points = from(rectangleSet).selectMany([](Gdiplus::Rect x) {return from(GetPoints(x)); }).toStdSet();
+		std::set<Gdiplus::Point> points;
+		for (auto i : rectangleSet)
+		{
+			std::set<Gdiplus::Point> rpoints = GetPoints(i);
+			UnionWith(points, rpoints);
+		}
 		return points;
 	}
 	std::set<Gdiplus::Point> Overlaps(std::set<Gdiplus::Point> points)
@@ -585,6 +595,15 @@ public:
 		Width = 1;
 		Height = 1;
 	}
+	Template(Template* t) : Template()
+	{
+		type = t->type;
+		icon = t->icon;
+	}
+	Template* CopyTo()
+	{
+		return new Template(this);
+	}
 };
 class Overlay : public Occupier
 {
@@ -598,6 +617,15 @@ public:
 		Width = 1;
 		Height = 1;
 	}
+	Overlay(Overlay* t) : Overlay()
+	{
+		type = t->type;
+		icon = t->icon;
+	}
+	Overlay* CopyTo()
+	{
+		return new Overlay(this);
+	}
 };
 class Smudge : public Overlapper
 {
@@ -607,6 +635,16 @@ public:
 	int data;
 	Smudge() : type(nullptr), icon(0), data(0)
 	{
+	}
+	Smudge(Smudge* t) : Smudge()
+	{
+		type = t->type;
+		icon = t->icon;
+		data = t->data;
+	}
+	Smudge* CopyTo()
+	{
+		return new Smudge(this);
 	}
 };
 class Terrain : public Occupier, public Overlapper
@@ -724,9 +762,10 @@ class Map
 {
 public:
 	std::string theater;
+	int x;
+	int y;
 	int width;
 	int height;
-	int size;
 	int theaterid;
 	HouseType* player;
 	HouseType* baseplayer;
@@ -745,6 +784,17 @@ public:
 	Map();
 	~Map();
 	void Load(const char* path);
+	Gdiplus::Rect GetBounds()
+	{
+		return Gdiplus::Rect(x, y, width, height);
+	}
+	void SetBounds(Gdiplus::Rect rect)
+	{
+		x = rect.X;
+		y = rect.Y;
+		width = rect.Width;
+		height = rect.Height;
+	}
 	void BeginUpdate()
 	{
 		updatecount++;
@@ -770,4 +820,5 @@ public:
 	void BuildingsOccupierRemoved(OccupierEventArgs<Occupier*> args);
 	void Init();
 	void Free();
+	Map* Clone();
 };

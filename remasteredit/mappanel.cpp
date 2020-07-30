@@ -15,12 +15,12 @@
 #include "textman.h"
 #include <windowsx.h>
 #include <sstream>
+#include "tools.h"
+MapPanel* MainPanel; 
 template <typename T> int sgn(T val)
 {
 	return (T(0) < val) - (val < T(0));
 }
-
-MapPanel* MapPanel::panel = nullptr;
 
 LRESULT MapPanel::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -75,8 +75,86 @@ LRESULT MapPanel::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_MOUSEMOVE:
 		{
+			if (focusOnMouseEnter)
+			{
+				if (GetFocus() != window)
+				{
+					SetFocus(window);
+				}
+			}
 			Gdiplus::Point p(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-			OnMouseMove(p);
+			MouseMove(p);
+			for (auto i : OnMouseMove)
+			{
+				i->OnMouseMove(p);
+			}
+		}
+		break;
+	case WM_LBUTTONDOWN:
+		{
+			Gdiplus::Point p(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			for (auto i : OnMouseDown)
+			{
+				i->OnMouseDown(this, VK_LBUTTON, p);
+			}
+		}
+		break;
+	case WM_RBUTTONDOWN:
+		{
+			Gdiplus::Point p(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			for (auto i : OnMouseDown)
+			{
+				i->OnMouseDown(this, VK_RBUTTON, p);
+			}
+		}
+		break;
+	case WM_MBUTTONDOWN:
+		{
+			Gdiplus::Point p(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			for (auto i : OnMouseDown)
+			{
+				i->OnMouseDown(this, VK_MBUTTON, p);
+			}
+		}
+		break;
+	case WM_LBUTTONUP:
+		{
+			for (auto i : OnMouseUp)
+			{
+				i->OnMouseUp(VK_LBUTTON);
+			}
+		}
+		break;
+	case WM_RBUTTONUP:
+		{
+			for (auto i : OnMouseUp)
+			{
+				i->OnMouseUp(VK_RBUTTON);
+			}
+		}
+		break;
+	case WM_LBUTTONDBLCLK:
+		{
+			for (auto i : OnMouseDoubleClick)
+			{
+				i->OnMouseDoubleClick();
+			}
+		}
+		break;
+	case WM_KEYDOWN:
+		{
+			for (auto i : OnKeyDown)
+			{
+				i->OnKeyDown(wParam);
+			}
+		}
+		break;
+	case WM_KEYUP:
+		{
+			for (auto i : OnKeyUp)
+			{
+				i->OnKeyUp(wParam);
+			}
 		}
 		break;
 	case WM_ERASEBKGND:
@@ -99,13 +177,23 @@ LRESULT MapPanel::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					cells = invalidateCells;
 				}
-				PreRender(RenderEventArgs(&g, cells, !fullInvalidation));
+				if (OnPreRender)
+				{
+					std::invoke(OnPreRender, currentTool, RenderEventArgs(&g, cells, !fullInvalidation));
+				}
 				if (mapImage)
 				{
 					g.SetTransform(compositeTransform);
 					g.DrawImage(mapImage, 0, 0);
 				}
-				PostRender(RenderEventArgs(&g, cells, !fullInvalidation));
+				if (OnPostRender)
+				{
+					std::invoke(OnPostRender, currentTool, RenderEventArgs(&g, cells, !fullInvalidation));
+				}
+				if (OnTemplatePostRender)
+				{
+					std::invoke(OnTemplatePostRender, currentTemplateTool, RenderEventArgs(&g, cells, !fullInvalidation));
+				}
 				invalidateCells.clear();
 				fullInvalidation = false;
 				EndPaint(hWnd, &ps);
@@ -124,6 +212,7 @@ LRESULT MapPanel::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			if (map)
 			{
+				map->Free();
 				delete map;
 			}
 			delete mapToViewTransform;
@@ -447,6 +536,7 @@ void MapPanel::SetZoom(int value)
 	int num = max(minZoom, min(maxZoom, value));
 	if (zoom != num)
 	{
+		zoomed = true;
 		zoom = num;
 		POINT pt;
 		GetCursorPos(&pt);
@@ -558,12 +648,13 @@ void MapPanel::FileOpen(const char* fname)
 
 void MapPanel::Invalidate()
 {
-	if (AutoScrollMinSize.Width && AutoScrollMinSize.Height)
+	if ((AutoScrollMinSize.Width && AutoScrollMinSize.Height) || !zoomed)
 	{
 		InvalidateRect(window, nullptr, FALSE);
 	}
 	else
 	{
+		zoomed = false;
 		InvalidateRect(window, nullptr, TRUE);
 	}
 }
@@ -589,6 +680,7 @@ void MapPanel::Invalidate(Map* invalidateMap, Gdiplus::Rect cellBounds)
 		{
 			std::set<Gdiplus::Point> other = invalidateMap->overlappers->Overlaps(invalidateCells);
 			UnionWith(invalidateCells, other);
+			Invalidate();
 		}
 	}
 }
@@ -598,8 +690,13 @@ void MapPanel::Invalidate(Map* invalidateMap, std::vector<Gdiplus::Rect> cellBou
 	if (!fullInvalidation)
 	{
 		unsigned int count = invalidateCells.size();
-		auto s = from(cellBounds).selectMany([](Gdiplus::Rect c) {return from(GetPoints(c)); }).toStdSet();
-		UnionWith(invalidateCells,s);
+		std::set<Gdiplus::Point> points;
+		for (auto i : cellBounds)
+		{
+			std::set<Gdiplus::Point> rpoints = GetPoints(i);
+			UnionWith(points, rpoints);
+		}
+		UnionWith(invalidateCells,points);
 		if (invalidateCells.size() > count)
 		{
 			auto other = invalidateMap->overlappers->Overlaps(invalidateCells);
@@ -656,23 +753,7 @@ void MapPanel::Invalidate(Map* invalidateMap, Overlapper* overlapper)
 	}
 }
 
-void MapPanel::PreRender(RenderEventArgs e)
-{
-	if (!e.HasCells || e.Cells.size())
-	{
-		Gdiplus::Graphics* g = Gdiplus::Graphics::FromImage(mapImage);
-		auto s = from(e.Cells).where([&](Gdiplus::Point p) {return map->metrics->Contains(p); }).toStdSet();
-		Invalidate(map);
-		MapRender::Render(map, g, s, MAPLAYER_ALL);
-		delete g;
-	}
-}
-
-void MapPanel::PostRender(RenderEventArgs e)
-{
-}
-
-void MapPanel::OnMouseMove(Gdiplus::Point p)
+void MapPanel::MouseMove(Gdiplus::Point p)
 {
 	if (!map)
 	{

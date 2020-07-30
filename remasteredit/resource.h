@@ -19,7 +19,6 @@
 #define ID_WALLS_TOOL                   40013
 #define ID_WAYPOINTS_TOOL               40014
 #define ID_CELL_TRIGGERS_TOOL           40015
-#define ID_BUTTON40016                  40016
 
 // Next default values for new objects
 // 

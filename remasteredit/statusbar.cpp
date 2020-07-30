@@ -26,6 +26,10 @@ void StatusBar::OnSize()
 		r.bottom = 0;
 		DrawText(hDC, strings[i].c_str(), strlen(strings[i].c_str()), &r, DT_CALCRECT);
 		pos[i] = r.right;
+		if (i)
+		{
+			pos[i] += pos[i - 1];
+		}
 	}
 	ReleaseDC(hWndStatusBar, hDC);
 	SendMessage(hWndStatusBar, SB_SETPARTS, Count, reinterpret_cast<LPARAM>(pos));

@@ -60,7 +60,7 @@ DirectionType DirectionType::Types[16] = {
 	{224, "NorthWest", FACING_NW},
 	{240, "North-NorthWest", FACING_NONE}
 };
-Map::Map() : width(0), height(0), size(0), templates(nullptr), overlays(nullptr), smudges(nullptr), technos(nullptr), buildings(nullptr), isra(false), theaterid(0), metrics(nullptr), updatecount(0), updating(false), invalidateoverlappers(false), baseplayer(nullptr), player(nullptr), overlappers(nullptr)
+Map::Map() : templates(nullptr), overlays(nullptr), smudges(nullptr), technos(nullptr), buildings(nullptr), isra(false), theaterid(0), metrics(nullptr), updatecount(0), updating(false), invalidateoverlappers(false), baseplayer(nullptr), player(nullptr), overlappers(nullptr)
 {
 	TDTheaters["desert"] = TDDesert;
 	TDTheaters["temperate"] = TDTemperate;
@@ -78,7 +78,6 @@ Map::Map() : width(0), height(0), size(0), templates(nullptr), overlays(nullptr)
 
 Map::~Map()
 {
-	Free();
 	delete metrics;
 	delete templates;
 	delete overlays;
@@ -217,6 +216,10 @@ void Map::Load(const char* path)
 		buildings->OnOccupierRemoved = &Map::BuildingsOccupierRemoved;
 		char th[12];
 		ini.Get_String("Map", "Theater", "", th, 12);
+		x = ini.Get_Int("Map", "X", 0);
+		y = ini.Get_Int("Map", "Y", 0);
+		width = ini.Get_Int("Map", "Width", 0);
+		height = ini.Get_Int("Map", "Height", 0);
 		_strlwr(th);
 		theater = th;
 		theaterid = RATheaterIDs[theater];
@@ -234,11 +237,8 @@ void Map::Load(const char* path)
 		{
 			baseplayer = HouseType::HouseMapRA["GoodGuy"];
 		}
-		width = RA_MAP_CELL_W;
-		height = RA_MAP_CELL_H;
-		size = RA_MAP_CELL_TOTAL;
-		MapPanel::panel->data = new BYTE[TileWidth * width * TileHeight * height * 4];
-		MapPanel::panel->mapImage = new Gdiplus::Bitmap(TileWidth * width, TileHeight * height, TileWidth * width * 4, PixelFormat32bppARGB, MapPanel::panel->data);
+		MainPanel->data = new BYTE[TileWidth * metrics->Width * TileHeight * metrics->Height * 4];
+		MainPanel->mapImage = new Gdiplus::Bitmap(TileWidth * metrics->Width, TileHeight * metrics->Height, TileWidth * metrics->Width * 4, PixelFormat32bppARGB, MainPanel->data);
 		Free();
 		Init();
 		int clen = ini.Get_UUBlock("MapPack", _staging_buffer, sizeof(_staging_buffer));
@@ -583,6 +583,10 @@ void Map::Load(const char* path)
 		buildings->OnOccupierRemoved = &Map::BuildingsOccupierRemoved;
 		char th[12];
 		ini.Get_String("Map", "Theater", "", th, 12);
+		x = ini.Get_Int("Map", "X", 0);
+		y = ini.Get_Int("Map", "Y", 0);
+		width = ini.Get_Int("Map", "Width", 0);
+		height = ini.Get_Int("Map", "Height", 0);
 		theater = th;
 		theaterid = TDTheaterIDs[theater];
 		TheTilesetManager->Reset();
@@ -600,11 +604,8 @@ void Map::Load(const char* path)
 		{
 			baseplayer = HouseType::HouseMapTD["GoodGuy"];
 		}
-		width = TD_MAP_CELL_W;
-		height = TD_MAP_CELL_H;
-		size = TD_MAP_CELL_TOTAL;
-		MapPanel::panel->data = new BYTE[TileWidth * width * TileHeight * height * 4];
-		MapPanel::panel->mapImage = new Gdiplus::Bitmap(TileWidth * width, TileHeight * height, TileWidth * width * 4, PixelFormat32bppARGB, MapPanel::panel->data);
+		MainPanel->data = new BYTE[TileWidth * metrics->Width * TileHeight * metrics->Height * 4];
+		MainPanel->mapImage = new Gdiplus::Bitmap(TileWidth * metrics->Width, TileHeight * metrics->Height, TileWidth * metrics->Width * 4, PixelFormat32bppARGB, MainPanel->data);
 		Free();
 		Init();
 		for (int i = 0; i < TD_MAP_CELL_TOTAL; i++)
@@ -886,89 +887,63 @@ void Map::Update()
 
 void Map::UpdateResourceOverlays(std::set<Gdiplus::Point> locations)
 {
-	static int icons1[9] = { 0, 1, 3, 4, 6, 7, 8, 10, 11 };
-	static int icons2[9] = { 0, 0, 0, 1, 1, 1, 2, 2, 2 };
-	for (int y = 0; y < height; y++)
+	static int array[9] = { 0, 1, 3, 4, 6, 7, 8, 10, 11 };
+	static int array2[9] = { 0, 0, 0, 1, 1, 1, 2, 2, 2 };
+	for (auto item3 : from(overlays->IntersectsWith(locations)).where([](std::pair<int, Overlay*> o) {return o.second->type->IsResource; }).toStdVector())
 	{
-		for (int x = 0; x < width; x++)
+		int item = item3.first;
+		Overlay* item2 = item3.second;
+		int num = 0;
+		for (auto facing : metrics->AdjacentFacings)
 		{
-			int cell = (y * width) + x;
-			Overlay* o = overlays->Get(cell);
-			if (o)
+			Overlay* o = overlays->Adjacent(item, facing);
+			if (o && o->type->IsResource)
 			{
-				if (o->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || o->type->Flag == OVERLAYTYPE_GEMS)
-				{
-					int count = 0;
-					for (auto i : metrics->AdjacentFacings)
-					{
-						Overlay* ao = overlays->Adjacent(cell, i);
-						if (ao && (ao->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD || ao->type->Flag == OVERLAYTYPE_GEMS))
-						{
-							count++;
-						}
-					}
-					if (o->type->Flag == OVERLAYTYPE_TIBERIUMORGOLD)
-					{
-						o->icon = icons1[count];
-					}
-					else
-					{
-						o->icon = icons2[count];
-					}
-					overlays->Set(cell, o);
-				}
+				num++;
 			}
 		}
+		item2->icon = (item2->type->IsGem ? array2[num] : array[num]);
 	}
 }
 
 void Map::UpdateWallOverlays(std::set<Gdiplus::Point> locations)
 {
-	for (int y = 0; y < height; y++)
+	for (auto item3 : from(overlays->IntersectsWith(locations)).where([](std::pair<int, Overlay*> o) {return o.second->type->IsWall; }).toStdVector())
 	{
-		for (int x = 0; x < width; x++)
+		int item = item3.first;
+		Overlay* item2 = item3.second;
+		Overlay* north = overlays->Adjacent(item, FACING_N);
+		Overlay* east = overlays->Adjacent(item, FACING_E);
+		Overlay* south = overlays->Adjacent(item, FACING_S);
+		Overlay* west = overlays->Adjacent(item, FACING_W);
+		int num = 0;
+		if (north && north->type == item2->type)
 		{
-			int cell = (y * width) + x;
-			Overlay* o = overlays->Get(cell);
-			if (o)
-			{
-				if (o->type->Flag == OVERLAYTYPE_WALL)
-				{
-					Overlay* north = overlays->Adjacent(cell, FACING_N);
-					Overlay* east = overlays->Adjacent(cell, FACING_E);
-					Overlay* south = overlays->Adjacent(cell, FACING_S);
-					Overlay* west = overlays->Adjacent(cell, FACING_W);
-					int count = 0;
-					if (north && north->type == o->type)
-					{
-						count |= 1;
-					}
-					if (east && east->type == o->type)
-					{
-						count |= 2;
-					}
-					if (south && south->type == o->type)
-					{
-						count |= 4;
-					}
-					if (west && west->type == o->type)
-					{
-						count |= 8;
-					}
-					o->icon = count;
-					overlays->Set(cell, o);
-				}
-			}
+			num |= 1;
 		}
+		if (east && east->type == item2->type)
+		{
+			num |= 2;
+		}
+		if (south && south->type == item2->type)
+		{
+			num |= 4;
+		}
+		if (west && west->type == item2->type)
+		{
+			num |= 8;
+		}
+		item2->icon = num;
+		overlays->Set(item, item2);
 	}
 }
 
 void Map::RemoveBib(Structure* building)
 {
-	for (auto x : from(smudges->IntersectsWith(building->BibCells)).where([](std::pair<int, Smudge*> p) {return p.second->type->Flag & SMUDGETYPE_BIB; }).toStdVector())
+	for (auto b : from(smudges->IntersectsWith(building->BibCells)).where([](std::pair<int, Smudge*> p) {return p.second->type->Flag & SMUDGETYPE_BIB; }).toStdVector())
 	{
-		delete smudges->Get(x.first);
-		smudges->Set(x.first, nullptr);
+		delete smudges->Get(b.first);
+		smudges->Set(b.first, nullptr);
 	}
 	building->BibCells.clear();
 }
@@ -1256,4 +1231,65 @@ std::vector<InfantryStoppingType> InfantryGroup::ClosestStoppingTypes(Gdiplus::P
 		array[i] = std::make_pair((InfantryStoppingType)i, Vector2(static_cast<float>(subPixel.X - stoppingLocations[i].X), static_cast<float>(subPixel.Y - stoppingLocations[i].Y)).LengthSquared());
 	}
 	return from(array).orderBy([](std::pair<InfantryStoppingType, float> p) {return p.second; }).select([](std::pair<InfantryStoppingType, float> p) {return p.first; }).toStdVector();
+}
+
+Map* Map::Clone()
+{
+	Map* map = new Map();
+	map->BeginUpdate();
+	map->theater = theater;
+	map->x = x;
+	map->y = y;
+	map->width = width;
+	map->height = height;
+	map->theaterid = theaterid;
+	map->player = player;
+	map->baseplayer = baseplayer;
+	map->metrics = new CellMetrics(metrics->Width, metrics->Height);
+	map->overlappers = new OverlapperSet<Overlapper*>(map->metrics);
+	map->templates = new CellGrid<Template*>(map->metrics, map);
+	map->overlays = new CellGrid<Overlay*>(map->metrics, map);
+	map->overlays->OnCellChanged = &Map::OverlayCellChanged;
+	map->smudges = new CellGrid<Smudge*>(map->metrics, map);
+	map->smudges->OnCellChanged = &Map::SmudgeCellChanged;
+	map->technos = new OccupierSet<Occupier*>(map->metrics);
+	map->technos->map = map;
+	map->technos->OnOccupierAdded = &Map::TechnosOccupierAdded;
+	map->technos->OnOccupierRemoved = &Map::TechnosOccupierRemoved;
+	map->buildings = new OccupierSet<Occupier*>(map->metrics);
+	map->buildings->map = map;
+	map->buildings->OnOccupierAdded = &Map::BuildingsOccupierAdded;
+	map->buildings->OnOccupierRemoved = &Map::BuildingsOccupierRemoved;
+	map->isra = isra;
+	templates->CopyTo(map->templates);
+	overlays->CopyTo(map->overlays);
+	smudges->CopyTo(map->smudges);
+	for (auto techno : *technos)
+	{
+		Gdiplus::Point item = techno.second;
+		Occupier* item2 = techno.first;
+		InfantryGroup* infantryGroup = dynamic_cast<InfantryGroup*>(item2);
+		if (infantryGroup)
+		{
+			InfantryGroup* infantryGroup2 = new InfantryGroup();
+			infantryGroup2->infantry[0] = infantryGroup->infantry[0];
+			infantryGroup2->infantry[1] = infantryGroup->infantry[1];
+			infantryGroup2->infantry[2] = infantryGroup->infantry[2];
+			infantryGroup2->infantry[3] = infantryGroup->infantry[3];
+			infantryGroup2->infantry[4] = infantryGroup->infantry[4];
+			map->technos->Add(item, infantryGroup2);
+		}
+		else if (dynamic_cast<Structure*>(item2) == nullptr)
+		{
+			map->technos->Add(item, item2);
+		}
+	}
+	for (auto structure : *buildings)
+	{
+		Gdiplus::Point item3 = structure.second;
+		Occupier *item4 = structure.first;
+		map->buildings->Add(item3, item4);
+	}
+	map->EndUpdate();
+	return map;
 }

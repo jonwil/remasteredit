@@ -13,8 +13,14 @@
 #include "mainwindow.h"
 #include "mappanel.h"
 #include "textman.h"
+#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' " "version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
 int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
+	INITCOMMONCONTROLSEX ex;
+	ex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+	ex.dwICC = ICC_WIN95_CLASSES;
+	InitCommonControlsEx(&ex);
 	UINT  num = 0;          // number of image encoders
 	UINT  size = 0;         // size of the image encoder array in bytes
 
@@ -43,11 +49,6 @@ int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	free(pImageCodecInfo);
 	return -1;  // Failure
 }
-
-/*void PreRender(Gdiplus::Graphics* g, std::vector<Gdiplus::Point> cells)
-{
-}
-*/
 
 int APIENTRY WinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
@@ -88,8 +89,11 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 	height -= wnd.barheight;
 	height -= wnd.sbheight;
 	MapPanel panel(hInstance,0,wnd.barheight,width,height,wnd.window);
+	panel.focusOnMouseEnter = true;
+	MainPanel = &panel;
 	ShowWindow(wnd.window, SW_MAXIMIZE);
 	UpdateWindow(wnd.window);
+	wnd.RefreshAvailableTools();
 	UpdateWindow(panel.window);
 	MSG msg;
 	while (GetMessage(&msg, nullptr, 0, 0))
