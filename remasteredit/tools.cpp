@@ -175,7 +175,7 @@ TemplateDialog::TemplateDialog(int x, int y, int width, int height, HWND parent,
 {
 	Create(WS_EX_TOOLWINDOW | WS_EX_CONTROLPARENT, "TemplateDialog", "Map", WS_CAPTION | WS_CLIPCHILDREN | WS_OVERLAPPED | WS_THICKFRAME, x, y, width, height, parent, nullptr, instance);
 	TemplateTypeListView = new ListView(4, 4, 267, 577, window, instance);
-	TemplateTypeMapPanel = new MapPanel(instance, 4, 585, 248, 266, window);
+	TemplateTypeMapPanel = new MapPanel(instance, 4, 585, 267, 266, window);
 	TemplateTypeMapPanel->SetMaxZoom(8);
 	TemplateTypeMapPanel->SetMaxZoom(1);
 	TemplateTypeMapPanel->SetZoom(1);
@@ -205,7 +205,7 @@ LRESULT TemplateDialog::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 	case WM_ERASEBKGND:
 		{
 			Gdiplus::Graphics g(reinterpret_cast<HDC>(wParam));
-			g.Clear(GetSysColor(COLOR_BTNFACE));
+			g.Clear(Gdiplus::ARGB(Gdiplus::Color::White));
 		}
 		break;
 	}
@@ -483,7 +483,7 @@ void TemplateTool::SetTemplate(Gdiplus::Point location)
 		{
 			int icon = SelectedIcon.Y * SelectedTemplateType->IconWidth + SelectedIcon.X;
 			Template* oldTemplate = map->templates->Get(cell);
-			if (oldTemplate->type != SelectedTemplateType || oldTemplate->icon != icon)
+			if (!oldTemplate || oldTemplate->type != SelectedTemplateType || oldTemplate->icon != icon)
 			{
 				Template* newTemplate = new Template;
 				newTemplate->type = SelectedTemplateType;
@@ -503,14 +503,14 @@ void TemplateTool::SetTemplate(Gdiplus::Point location)
 	{
 		for (int j = 0; j < SelectedTemplateType->IconWidth; j++)
 		{
-			if (SelectedTemplateType->IconMask[i * SelectedTemplateType->IconWidth + j])
+			if (SelectedTemplateType->IconMask[num3])
 			{
 				Gdiplus::Point location3(location.X + j, location.Y + i);
 				int cell3;
 				if (map->metrics->GetCell(location3, cell3))
 				{
 					Template* oldTemplate = map->templates->Get(cell3);
-					if (oldTemplate->type != SelectedTemplateType || oldTemplate->icon != num3)
+					if (!oldTemplate || oldTemplate->type != SelectedTemplateType || oldTemplate->icon != num3)
 					{
 						Template* newTemplate = new Template;
 						newTemplate->type = SelectedTemplateType;
@@ -555,7 +555,7 @@ void TemplateTool::RemoveTemplate(Gdiplus::Point location)
 	{
 		for (int j = 0; j < SelectedTemplateType->IconWidth; j++)
 		{
-			if (SelectedTemplateType->IconMask[i * SelectedTemplateType->IconWidth + j])
+			if (SelectedTemplateType->IconMask[num3])
 			{
 				Gdiplus::Point location3(location.X + j, location.Y + i);
 				int cell3;
@@ -732,7 +732,7 @@ void TemplateTool::PreRenderMap()
 		{
 			int icon = SelectedIcon.Y * SelectedTemplateType->IconWidth + SelectedIcon.X;
 			Template* oldTemplate = PreviewMap->templates->Get(cell);
-			if (oldTemplate->type != SelectedTemplateType || oldTemplate->icon != icon)
+			if (!oldTemplate || oldTemplate->type != SelectedTemplateType || oldTemplate->icon != icon)
 			{
 				Template* newTemplate = new Template;
 				newTemplate->type = SelectedTemplateType;
@@ -751,14 +751,14 @@ void TemplateTool::PreRenderMap()
 	{
 		for (int j = 0; j < SelectedTemplateType->IconWidth; j++)
 		{
-			if (SelectedTemplateType->IconMask[i * SelectedTemplateType->IconWidth + j])
+			if (SelectedTemplateType->IconMask[num3])
 			{
 				Gdiplus::Point location3(mouseCell.X + j, mouseCell.Y + i);
 				int cell3;
 				if (PreviewMap->metrics->GetCell(location3, cell3))
 				{
 					Template* oldTemplate = PreviewMap->templates->Get(cell3);
-					if (oldTemplate->type != SelectedTemplateType || oldTemplate->icon != num3)
+					if (!oldTemplate || oldTemplate->type != SelectedTemplateType || oldTemplate->icon != num3)
 					{
 						Template* newTemplate = new Template;
 						newTemplate->type = SelectedTemplateType;
@@ -825,7 +825,7 @@ TemplateTool::TemplateTool(Map* map, MapPanel* mapPanel, MapLayerFlag layers, Li
 	{
 		f = from(TemplateType::PointersRA);
 	}
-	auto th = f.where([map](TemplateType* t) {return (t->Theater & map->theaterid) != 0 && t->Thumbnail != 0 && (t->Flag & TEMPLATETYPE_CLEAR) == 0; });
+	auto th = f.where([map](TemplateType* t) {return (t && (t->Theater & map->theaterid) != 0) && (t->Thumbnail) != 0 && ((t->Flag & TEMPLATETYPE_CLEAR) == 0); });
 	int width = th.Max([](TemplateType* t) {return t->Thumbnail->GetWidth(); })->Thumbnail->GetWidth();
 	int height = th.Max([](TemplateType* t) {return t->Thumbnail->GetHeight(); })->Thumbnail->GetHeight();
 	List = new ImageList(Gdiplus::Size(width, height));
@@ -843,6 +843,7 @@ TemplateTool::TemplateTool(Map* map, MapPanel* mapPanel, MapLayerFlag layers, Li
 		}
 	}
 	templateTypeListView->SetImageList(List);
+	templateTypeListView->SetItemCount(indexes.size());
 	int index = 0;
 	for (int i = 0; i < GROUP_COUNT; i++)
 	{

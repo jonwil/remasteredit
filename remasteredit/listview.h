@@ -37,6 +37,7 @@ public:
 	int AddItem(const char* name, int group, int imageindex, LPARAM object);
 	void SelectItemByObject(LPARAM object);
 	void SetImageList(ImageList* list);
+	void SetItemCount(int count);
 	int GetSelectedIndex() { return SelectedIndex; }
 	LPARAM GetSelectedObject() { return SelectedObject; }
 	HWND GetHandle() { return Handle; }

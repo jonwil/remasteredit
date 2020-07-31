@@ -284,7 +284,7 @@ void MainWindow::RefreshActiveTool()
 		{
 			case TOOL_MAP:
 			{
-				TemplateDialog* dialog = new TemplateDialog(24, 120, 290, 729, window, instance);
+				TemplateDialog* dialog = new TemplateDialog(14, 120, 290, 895, window, instance);
 				activeTool = new TemplateTool(MainPanel->map, MainPanel, activeLayers, dialog->TemplateTypeListView, dialog->TemplateTypeMapPanel);
 				activeWindow = dialog;
 				ShowWindow(activeWindow->window, SW_SHOW);
