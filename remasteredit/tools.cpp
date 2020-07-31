@@ -766,12 +766,6 @@ void TemplateTool::PreRenderMap()
 						PreviewMap->templates->Set(cell3, newTemplate);
 						if (oldTemplate)
 						{
-							if (cell3 == 1048)
-							{
-								FILE* f = fopen("template.log", "at");
-								fprintf(f, "oldTemplate PreRenderMap 2 %p %s map %p\n", oldTemplate, oldTemplate->type->Name.c_str(), PreviewMap);
-								fclose(f);
-							}
 							delete oldTemplate;
 						}
 					}
